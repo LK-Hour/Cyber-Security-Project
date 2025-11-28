@@ -1,4 +1,55 @@
 # Cybersecurity Project Documentation
+#
+# Core Malicious & Anti-Malicious Methods
+
+## Core Malicious Methods (chimera_real.py)
+
+1. **File Encryption (Ransomware)**
+   - Encrypts user files (.txt, .docx, .pdf, .jpg, etc.) using AES-256
+   - Creates ransom notes and demands payment
+
+2. **System Corruption (Wiper)**
+   - Corrupts Windows hosts file to block security sites
+   - Deletes shadow copies and disables Windows Defender (simulated)
+
+3. **Data Exfiltration (Spyware)**
+   - Steals system info and samples from documents
+   - Sends stolen data to C2 server
+
+## Core Anti-Malicious Methods (aegis_real.py)
+
+1. **Heuristic Encryption Detection**
+   - Monitors for rapid file modifications (high entropy writes)
+   - Kills process if >3 files modified in 1 second
+
+2. **System File Integrity Monitor**
+   - Hashes and restores Windows hosts file if tampered
+
+3. **Network Egress Filtering**
+   - Monitors outbound traffic
+   - Blocks unauthorized data exfiltration attempts
+
+---
+
+## Project Progress & Next Steps
+
+**Techniques required:** 12 (6 malicious, 6 anti-malicious)
+**Techniques implemented:** ~5/12
+
+- Registry Run Key persistence (malicious)
+- Scheduled Task persistence (malicious)
+- USB worm propagation (malicious)
+- Registry watchdog (anti-malicious)
+- USB auto-scan (anti-malicious)
+
+**Completion:** ~40%
+
+**Next Steps:**
+- Integrate missing core methods (wiper, exfiltration, heuristic detection)
+- Add SMB worm and SMB traffic blocker
+- Implement magic number analysis, script de-obfuscation, and task scheduler audit
+- Test and validate all modules in isolated VM network
+- Update documentation and prepare for demo
 
 ## Project Overview
 This project is a **cybersecurity demonstration** consisting of three Python files that simulate a realistic malware attack scenario and defense system. This is designed for educational purposes to understand how malware works and how defense systems detect and neutralize threats.
