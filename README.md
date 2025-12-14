@@ -1,53 +1,186 @@
-# CADT Cyber Security Project
+# CADT Cyber Security Project - FULLY INTEGRATED
 
-## Quick Overview
+## 🎓 Educational Cybersecurity Demonstration
 
-This repository contains a paired demonstration: a simulated hybrid malware (`chimera_real.py`) and a host-based defense system (`aegis_real.py`), plus a simple command-and-control server (`c2_server.py`). All material is intended for controlled, educational use in isolated virtual machines.
+This repository contains a **fully integrated** Red Team vs Blue Team demonstration featuring complete malware attack chains and comprehensive defense mechanisms. All material is intended for controlled, educational use in isolated virtual machines.
+
+**Version 2.0 - Full Team Integration Complete (December 13, 2025)**
+
+---
+
+## 📋 Quick Overview
 
 ### Core Project Files
 
-1. **`chimera_real.py`** - Simulated ransomware/wiper/exfiltration payload (Red Team artifact)
-2. **`aegis_real.py`** - Host-based defense and detection system (Blue Team artifact)
-3. **`c2_server.py`** - Simple TCP-based Command & Control server (Attacker infrastructure)
+1. **`chimera_real.py`** - **INTEGRATED RED TEAM SOLUTION**
+   - Complete malware suite with all attack techniques
+   - Includes modules from 3 Red Team specialists (Puleu, Homey, Kimkheng)
+   - Features: Delivery, Persistence, Lateral Movement, Ransomware, Wiper, Spyware, C2
 
-### Documentation & User Guide
+2. **`aegis_real.py`** - **INTEGRATED BLUE TEAM SOLUTION**
+   - Complete defense system with multi-layer protection
+   - Includes modules from 3 Blue Team specialists (Sakura, Titya, Vicheakta)
+   - Features: Anti-Delivery, Anti-Persistence, Anti-Spreading, Behavioral Detection
 
-- **`DOCUMENTATION.md`** — In-depth documentation, architecture, and learning objectives.
-- **`USER_GUIDE.md`** — Step-by-step user guide for setup, demo scenarios, and troubleshooting.
+3. **`c2_server.py`** - Command & Control server (Attacker infrastructure)
 
-## Quick Start (High-level)
+### Documentation
+
+- **`DOCUMENTATION.md`** — In-depth technical documentation and architecture
+- **`USER_GUIDE.md`** — Step-by-step setup and usage instructions
+
+---
+
+## 🚀 Quick Start Guide
 
 ### ⚠️ CRITICAL WARNING
-**Run these demos ONLY in isolated virtual machines on networks you control. Do not run on production or personal machines.**
+**Run these demos ONLY in isolated virtual machines on air-gapped networks. Do NOT run on production systems or personal machines.**
+
+### Prerequisites
+
+- **Attacker VM**: Kali Linux (for C2 server)
+- **Victim VM**: Windows 10/11 (for malware & defense demo)
+- **Network**: Isolated virtual network (no internet access)
+- **Python**: 3.8+ with pip installed
 
 ### Setup Summary
 
-1. **Attacker Machine (Kali Linux)** — start the C2 server:
+#### 1. Install Dependencies (Windows VM)
+
+```powershell
+# Open Command Prompt as Administrator
+pip install cryptography watchdog psutil pywin32
+```
+
+#### 2. Start C2 Server (Kali Linux)
+
 ```bash
-cd /home/kali/Demo
+cd /path/to/project
 python3 c2_server.py
 ```
 
-2. **Victim Machine (Windows VM)** — install requirements and run defense first:
+#### 3. Run Defense System (Windows VM - Terminal 1)
+
 ```powershell
-# Open Command Prompt as Administrator
-pip install cryptography watchdog psutil
-
-# Start defense (keep running)
+# Keep this terminal running
 python aegis_real.py
+```
 
-# In a separate terminal, run malware for demo purposes
+#### 4. Run Malware (Windows VM - Terminal 2)
+
+```powershell
+# For demonstration purposes only
 python chimera_real.py
 ```
 
-## What You'll Learn
+---
 
-- Ransomware encryption and persistence techniques
-- System corruption (wiper) concepts
-- Data exfiltration and C2 interaction
-- Host-based detection approaches and automated responses
+## 📚 What You'll Learn
 
-## Current Project Status (Enhanced v2.0)
+### Red Team Techniques (MITRE ATT&CK)
+- **Initial Access**: HTML smuggling, LNK file generation
+- **Persistence**: Registry Run keys, Scheduled Tasks
+- **Lateral Movement**: USB worm replication, SMB propagation
+- **Impact**: File encryption (ransomware), System corruption (wiper)
+- **Exfiltration**: Document stealing, Data exfiltration
+- **Command & Control**: C2 communication, Remote command execution
+
+### Blue Team Techniques (MITRE D3FEND)
+- **File Analysis**: Magic number detection, Signature scanning
+- **Script Analysis**: HTML smuggling detection, Obfuscation detection
+- **Behavioral Detection**: Heuristic ransomware detection
+- **Integrity Monitoring**: Hash-based file protection
+- **Network Filtering**: C2 blocking, SMB traffic monitoring
+- **Quarantine**: Automated threat isolation
+
+---
+
+## 🏗️ Project Architecture
+
+### INTEGRATED RED TEAM (`chimera_real.py`)
+
+#### Core Malware
+- **Ransomware**: AES-256 file encryption with ransom notes
+- **Wiper**: System corruption (hosts file, shadow copies, Defender)
+- **Spyware**: Document exfiltration, system reconnaissance
+- **C2 Communication**: Remote command execution, Status reporting
+
+#### Integrated Modules
+
+**Puleu - Delivery Specialist**
+- HTML Smuggling (3 phishing templates: DHL, Invoice, Office365)
+- LNK Generation (4 variants: Classic, RTLO, Word/Excel disguise)
+- PowerShell download cradles
+
+**Homey - Persistence Specialist**
+- Registry Persistence (Multiple Run key locations)
+- Scheduled Task Persistence (Multi-trigger tasks)
+- Stealth techniques (hidden tasks, disguised names)
+
+**Kimkheng - Lateral Movement Specialist**
+- USB Worm Replication (Autorun, hidden folders, decoys)
+- SMB Lateral Movement (Network discovery, Share enumeration, WMI execution)
+
+### INTEGRATED BLUE TEAM (`aegis_real.py`)
+
+#### Core Defense
+- **Heuristic Encryption Detection**: Behavioral ransomware detection
+- **File Integrity Monitor**: Hash-based system file protection
+- **Network Egress Filtering**: C2 communication blocking
+
+#### Integrated Modules
+
+**Sakura - Anti-Delivery Specialist**
+- **DeliveryThreatAnalyzer**: Unified file signature + HTML smuggling analysis
+- **AntiDeliverySystem**: Download folder monitoring and automatic quarantine
+
+**Titya - Anti-Persistence Specialist**
+- **RegistryWatchdog**: Monitors registry Run keys, detects and removes malicious entries
+- **TaskAuditor**: Enumerates scheduled tasks, detects and deletes suspicious tasks
+- Perfect 1:1 defense against Homey's RegistryPersistence and ScheduledTaskPersistence
+
+**Vicheakta - Anti-Spreading Specialist**
+- SMB Monitor (Port 445 traffic blocking)
+- USB Sentinel (Removable drive scanning)
+- Network propagation prevention
+
+---
+
+## 🎯 Current Project Status (v2.0 - FULLY INTEGRATED)
+
+✅ **COMPLETED:**
+- Full Red Team integration (Puleu, Homey, Kimkheng)
+- Full Blue Team integration (Sakura, Titya, Vicheakta)
+- Comprehensive inline documentation
+- MITRE ATT&CK & D3FEND mapping
+- Modular architecture with clean integration points
+- Error-free validation
+
+✅ **ALL FEATURES OPERATIONAL:**
+- Delivery methods (HTML smuggling, LNK generation)
+- Persistence mechanisms (Registry, Scheduled Tasks)
+- Lateral movement (USB, SMB)
+- Anti-delivery protection
+- Anti-persistence monitoring
+- Anti-spreading defenses
+
+---
+
+## 👥 Team Contributions
+
+### Red Team
+- **Puleu**: Delivery Specialist (HTML Smuggling, LNK Generation)
+- **Homey**: Persistence Specialist (Registry, Scheduled Tasks)
+- **Kimkheng**: Lateral Movement Specialist (USB Worm, SMB Propagation)
+
+### Blue Team
+- **Sakura**: Anti-Delivery Specialist (Delivery Threat Analyzer, Anti-Delivery System)
+- **Titya**: Anti-Persistence Specialist (Registry Watchdog, Task Auditor)
+- **Vicheakta**: Anti-Spreading Specialist (SMB Monitor, USB Sentinel)
+
+---
+
+## 📖 Additional Documentation
 
 - **Total techniques required (course deliverable):** 12 (6 malicious techniques + 6 anti-malicious techniques)
 - **Implemented:** 12/12 techniques ✅

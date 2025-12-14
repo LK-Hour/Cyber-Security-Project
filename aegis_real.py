@@ -1,14 +1,1024 @@
-# Standard library and third-party imports for defense system
+"""
+AEGIS DEFENSE - INTEGRATED BLUE TEAM SOLUTION
+==============================================
+Complete Host-Based Intrusion Detection System (HIDS)
+
+⚠️ DEFENSE PURPOSE: Protects against advanced malware threats
+
+INTEGRATED MODULES:
+==================
+[CORE DEFENSE]
+- Heuristic Encryption Detection (Behavioral ransomware detection)
+- System File Integrity Monitor (Hash-based protection)
+- Network Egress Filtering (C2 communication blocking)
+
+[ANTI-DELIVERY SPECIALIST - Sakura]
+- File Signature Scanner (Magic number analysis)
+- Script Analyzer (HTML smuggling detection)
+- Anti-Delivery System (Download folder monitoring)
+
+[ANTI-PERSISTENCE SPECIALIST - Titya]
+- Registry Watchdog (Defends against RegistryPersistence - Homey)
+- Task Auditor (Defends against ScheduledTaskPersistence - Homey)
+
+[ANTI-SPREADING SPECIALIST - Vicheakta]
+- SMB Monitor (Blocks SMB lateral movement)
+- USB Sentinel (Scans removable drives for malware)
+
+Author: CADT Cyber Security Project - Blue Team
+Date: December 13, 2025
+Version: 2.0 (Fully Integrated)
+"""
+
+# ==========================================
+# STANDARD LIBRARY IMPORTS
+# ==========================================
 import os         # File and directory operations
 import time       # Timestamps and timing for monitoring
 import hashlib    # MD5 hashing for file integrity verification
 import threading  # Multi-threaded monitoring (concurrent defense mechanisms)
 import shutil     # File operations for backup/restore
 import signal     # Process signals for forceful termination
+import subprocess # Execute system commands for task enumeration
+import winreg     # Windows registry access for persistence monitoring
+import re         # Regular expressions for pattern matching
+import base64     # Base64 decoding for script analysis
 import psutil     # Process and network monitoring library
 from watchdog.observers import Observer  # File system event monitoring
 from watchdog.events import FileSystemEventHandler  # File modification event handler
 
+# ==========================================
+# ANTI-DELIVERY SPECIALIST MODULE - Sakura
+# ==========================================
+# Purpose: Detect and block initial compromise attempts
+# Defense Against: HTML smuggling (Puleu), LNK files (Puleu)
+# MITRE D3FEND: D3-FA (File Analysis), D3-SCA (Script Content Analysis)
+#
+# TWO CLASSES:
+# 1. DeliveryThreatAnalyzer - Unified file signature + script analysis
+# 2. AntiDeliverySystem - Download monitoring orchestrator
+
+class DeliveryThreatAnalyzer:
+    """
+    Unified Delivery Threat Analyzer
+    Developer: Sakura (Anti-Delivery Specialist)
+    
+    Combines file signature analysis and HTML/JS script analysis.
+    Defends against Puleu's delivery techniques (HTMLSmuggler + LNKGenerator).
+    
+    MITRE D3FEND Techniques:
+    - D3-FA: File Analysis
+    - D3-FENCA: File Encoding Analysis
+    - D3-SCA: Script Content Analysis
+    - D3-DA: Dynamic Analysis
+    
+    Capabilities:
+    1. File Signature Analysis:
+       - Detects file type masquerading (EXE disguised as PDF/DOC)
+       - Checks magic numbers vs file extensions
+       - Identifies double extensions (file.pdf.exe)
+    
+    2. Script Analysis (HTML/JS):
+       - Detects HTML smuggling patterns
+       - Identifies large base64 payloads (>50KB)
+       - Checks for auto-download mechanisms
+       - Decodes and scans for embedded executables
+    
+    Defends Against:
+    - Puleu's HTMLSmuggler (3 phishing templates)
+    - Puleu's LNKGenerator (4 file variants)
+    """
+    
+    def __init__(self):
+        """Initialize analyzer with signatures and script patterns"""
+        # File signatures (magic numbers)
+        self.signatures = {
+            'exe': [b'MZ', b'ZM'],  # DOS/Windows executable
+            'pdf': [b'%PDF'],        # PDF document
+            'zip': [b'PK\x03\x04'],  # ZIP archive
+            'jpg': [b'\xFF\xD8\xFF'], # JPEG image
+            'png': [b'\x89PNG'],     # PNG image
+            'doc': [b'\xD0\xCF\x11\xE0'], # MS Office (old format)
+            'docx': [b'PK\x03\x04'], # DOCX (ZIP-based)
+            'lnk': [b'\x4C\x00\x00\x00']  # Windows shortcut
+        }
+        
+        # HTML smuggling detection patterns
+        self.suspicious_patterns = [
+            r'eval\s*\(',           # JavaScript eval (code execution)
+            r'unescape\s*\(',       # Decoding obfuscated strings
+            r'fromCharCode',        # Character code obfuscation
+            r'atob\s*\(',           # Base64 decoding
+            r'blob\s*=\s*new Blob', # Blob creation (file download)
+            r'\.click\s*\(\)',      # Automatic click (auto-download)
+            r'saveAs\s*\(',         # File save function
+            r'application/octet-stream'  # Binary file MIME type
+        ]
+    
+    def detect_file_type(self, file_path):
+        """
+        Detect actual file type by reading magic numbers
+        
+        Args:
+            file_path: Path to file to analyze
+        
+        Returns:
+            Tuple: (detected_type, is_suspicious, reason)
+        """
+        try:
+            # Read first 8 bytes (enough for most signatures)
+            with open(file_path, 'rb') as f:
+                header = f.read(8)
+            
+            # Check against known signatures
+            for file_type, signatures in self.signatures.items():
+                for sig in signatures:
+                    if header.startswith(sig):
+                        return (file_type, False, f"Valid {file_type.upper()} file")
+            
+            # Unknown signature - potentially suspicious
+            return ('unknown', True, f"Unknown file signature: {header[:4].hex()}")
+            
+        except Exception as e:
+            return ('error', True, f"Failed to read file: {e}")
+    
+    def analyze_file_signature(self, file_path):
+        """
+        Analyze file signature for type masquerading
+        
+        Args:
+            file_path: Path to file
+        
+        Returns:
+            Dictionary with scan results
+        """
+        file_name = os.path.basename(file_path)
+        file_ext = os.path.splitext(file_name)[1].lower().lstrip('.')
+        
+        # Detect actual file type
+        detected_type, is_suspicious, reason = self.detect_file_type(file_path)
+        
+        # Check for mismatch (masquerading)
+        if file_ext and file_ext != detected_type:
+            # Special case: DOCX/XLSX are ZIP-based (not suspicious)
+            if not (file_ext in ['docx', 'xlsx', 'pptx'] and detected_type == 'zip'):
+                is_suspicious = True
+                reason = f"Extension mismatch: .{file_ext} file has {detected_type.upper()} signature"
+        
+        # Check for double extension
+        if file_name.count('.') > 1:
+            is_suspicious = True
+            reason = f"Double extension detected: {file_name}"
+        
+        return {
+            'file_path': file_path,
+            'extension': file_ext,
+            'detected_type': detected_type,
+            'is_suspicious': is_suspicious,
+            'reason': reason
+        }
+    
+    def analyze_html_content(self, html_content):
+        """
+        Analyze HTML content for smuggling patterns
+        
+        Args:
+            html_content: HTML file content as string
+        
+        Returns:
+            Dictionary with analysis results
+        """
+        results = {
+            'is_suspicious': False,
+            'risk_level': 'LOW',
+            'patterns_found': [],
+            'has_large_base64': False,
+            'has_executable': False
+        }
+        
+        # Check for suspicious patterns
+        for pattern in self.suspicious_patterns:
+            if re.search(pattern, html_content, re.IGNORECASE):
+                results['patterns_found'].append(pattern)
+                results['is_suspicious'] = True
+        
+        # Check for large base64 strings (likely embedded payload)
+        base64_matches = re.findall(r'[A-Za-z0-9+/]{500,}={0,2}', html_content)
+        if base64_matches:
+            for match in base64_matches:
+                if len(match) > 50000:  # >50KB base64 = suspicious
+                    results['has_large_base64'] = True
+                    results['is_suspicious'] = True
+                    
+                    # Try to decode and check for MZ header
+                    try:
+                        decoded = base64.b64decode(match)
+                        if decoded.startswith(b'MZ'):
+                            results['has_executable'] = True
+                            results['risk_level'] = 'CRITICAL'
+                    except:
+                        pass
+        
+        # Determine risk level
+        if results['has_executable']:
+            results['risk_level'] = 'CRITICAL'
+        elif results['has_large_base64']:
+            results['risk_level'] = 'HIGH'
+        elif len(results['patterns_found']) > 3:
+            results['risk_level'] = 'MEDIUM'
+        
+        return results
+    
+    def analyze_file(self, file_path):
+        """
+        Comprehensive file analysis (signature + script content if HTML/JS)
+        
+        This is the main analysis method that combines both techniques.
+        
+        Args:
+            file_path: Path to file to analyze
+        
+        Returns:
+            Dictionary with complete analysis results
+        """
+        # Start with signature analysis
+        result = self.analyze_file_signature(file_path)
+        
+        # If HTML/JS file, also analyze script content
+        if file_path.endswith(('.html', '.htm', '.js')):
+            try:
+                with open(file_path, 'r', encoding='utf-8', errors='ignore') as f:
+                    content = f.read()
+                
+                script_result = self.analyze_html_content(content)
+                
+                # Merge results - script analysis takes priority if suspicious
+                if script_result['is_suspicious']:
+                    result['is_suspicious'] = True
+                    result['risk_level'] = script_result['risk_level']
+                    result['patterns_found'] = script_result['patterns_found']
+                    result['has_executable'] = script_result.get('has_executable', False)
+                    
+                    # Update reason with script analysis details
+                    reason = f"HTML smuggling detected ({script_result['risk_level']} risk)"
+                    if script_result.get('has_executable'):
+                        reason += " - Contains embedded executable!"
+                    result['reason'] = reason
+                    
+            except Exception as e:
+                result['script_error'] = str(e)
+        
+        return result
+
+
+class AntiDeliverySystem:
+    """
+    Anti-Delivery System Orchestrator
+    Developer: Sakura (Anti-Delivery Specialist)
+    
+    Monitors download folders for malicious files and quarantines threats.
+    Uses DeliveryThreatAnalyzer for comprehensive scanning.
+    
+    MITRE D3FEND Techniques:
+    - D3-FENCA: File Content Analysis
+    - D3-QA: Quarantine by Access
+    
+    How it works:
+    1. Monitors Downloads folder for new files
+    2. Scans each file with DeliveryThreatAnalyzer
+    3. Automatically quarantines suspicious files
+    4. Logs all detections for forensics
+    
+    Defends Against:
+    - Puleu's HTMLSmuggler phishing templates
+    - Puleu's LNK file variants
+    """
+    
+    def __init__(self, downloads_path):
+        """
+        Initialize anti-delivery system
+        
+        Args:
+            downloads_path: Path to Downloads folder to monitor
+        """
+        self.downloads_path = downloads_path
+        self.quarantine_dir = os.path.join(downloads_path, ".aegis_quarantine")
+        self.threat_analyzer = DeliveryThreatAnalyzer()
+        self.running = True
+        
+        # Create quarantine directory
+        if not os.path.exists(self.quarantine_dir):
+            os.makedirs(self.quarantine_dir)
+    
+    def quarantine_file(self, file_path, reason):
+        """
+        Move suspicious file to quarantine
+        
+        Args:
+            file_path: Path to suspicious file
+            reason: Reason for quarantine
+        """
+        try:
+            file_name = os.path.basename(file_path)
+            quarantine_path = os.path.join(self.quarantine_dir, file_name)
+            
+            # Move file to quarantine
+            shutil.move(file_path, quarantine_path)
+            
+            # Log quarantine action
+            log_file = os.path.join(self.quarantine_dir, "quarantine_log.txt")
+            with open(log_file, 'a') as f:
+                timestamp = time.strftime("%Y-%m-%d %H:%M:%S")
+                f.write(f"[{timestamp}] QUARANTINED: {file_name}\n")
+                f.write(f"Reason: {reason}\n\n")
+            
+            print(f"[QUARANTINE] {file_name} - {reason}")
+            return True
+            
+        except Exception as e:
+            print(f"[ERROR] Failed to quarantine {file_path}: {e}")
+            return False
+    
+    def quick_scan(self, file_path):
+        """
+        Perform quick scan on a file using unified threat analyzer
+        
+        Args:
+            file_path: Path to file
+        
+        Returns:
+            True if file is suspicious, False otherwise
+        """
+        # Skip if file is in quarantine dir
+        if self.quarantine_dir in file_path:
+            return False
+        
+        # Analyze file (signature + script content if applicable)
+        result = self.threat_analyzer.analyze_file(file_path)
+        
+        if result['is_suspicious']:
+            self.quarantine_file(file_path, result['reason'])
+            return True
+        
+        return False
+    
+    def monitor_downloads_folder(self):
+        """Monitor downloads folder for new files"""
+        print(f"[+] Monitoring downloads folder: {self.downloads_path}")
+        
+        # Track already scanned files
+        scanned_files = set()
+        
+        while self.running:
+            try:
+                # Scan for new files
+                for file_name in os.listdir(self.downloads_path):
+                    file_path = os.path.join(self.downloads_path, file_name)
+                    
+                    # Skip directories and already scanned files
+                    if os.path.isdir(file_path) or file_path in scanned_files:
+                        continue
+                    
+                    # Scan new file
+                    self.quick_scan(file_path)
+                    scanned_files.add(file_path)
+                
+                time.sleep(2)  # Check every 2 seconds
+                
+            except Exception as e:
+                print(f"[ERROR] Download monitoring error: {e}")
+                time.sleep(5)
+
+
+# ==========================================
+# ANTI-PERSISTENCE SPECIALIST MODULE - Titya
+# ==========================================
+# Purpose: Detect and remove persistence mechanisms
+# Defense Against: Registry Run keys, Scheduled tasks
+# MITRE D3FEND: D3-PSA (Process Spawn Analysis), D3-HBPI (Process Inspection)
+# 
+# TWO SEPARATE CLASSES TO MATCH RED TEAM STRUCTURE:
+# 1. RegistryWatchdog - Defends against RegistryPersistence (Homey)
+# 2. TaskAuditor - Defends against ScheduledTaskPersistence (Homey)
+
+class RegistryWatchdog:
+    """
+    Registry Persistence Monitor
+    Developer: Titya (Anti-Persistence Specialist)
+    
+    Defends against: RegistryPersistence class (Homey - Red Team)
+    
+    Monitors and removes malicious Registry Run key persistence.
+    Creates baseline of legitimate entries and detects new suspicious additions.
+    
+    MITRE D3FEND Techniques:
+    - D3-PSA: Process Spawn Analysis
+    - D3-HBPI: Host-Based Process Inspection
+    
+    How it works:
+    1. Creates baseline of current Registry Run keys at startup
+    2. Continuously monitors registry for new/modified entries
+    3. Checks entries against suspicious patterns
+    4. Automatically removes malicious entries
+    
+    Monitored Registry Locations:
+    - HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Run
+    - HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\RunOnce
+    - HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Policies\\Explorer\\Run
+    
+    Detection Patterns:
+    - Suspicious names: WindowsUpdate, SecurityUpdate, MicrosoftDefender (fake services)
+    - Suspicious paths: temp, appdata, downloads directories
+    - Known malware names: chimera, malware, backdoor
+    """
+    
+    def __init__(self):
+        """Initialize registry watchdog"""
+        self.running = True
+        self.registry_baseline = {}
+        self.suspicious_keywords = [
+            'WindowsUpdate', 'SecurityUpdate', 'MicrosoftDefender',
+            'WindowsSecurityUpdate', 'MicrosoftWindowsUpdate',
+            'chimera', 'malware', 'backdoor', 'svchost', 'csrss'
+        ]
+        
+        # Registry paths to monitor
+        self.monitored_paths = [
+            (winreg.HKEY_CURRENT_USER, r"Software\Microsoft\Windows\CurrentVersion\Run"),
+            (winreg.HKEY_CURRENT_USER, r"Software\Microsoft\Windows\CurrentVersion\RunOnce"),
+            (winreg.HKEY_CURRENT_USER, r"Software\Microsoft\Windows\CurrentVersion\Policies\Explorer\Run"),
+        ]
+        
+        # Create baseline of legitimate entries
+        self._create_baseline()
+    
+    def _create_baseline(self):
+        """Create baseline snapshot of current Registry Run keys"""
+        print("[*] Creating registry baseline...")
+        
+        for hive, path in self.monitored_paths:
+            try:
+                key = winreg.OpenKey(hive, path, 0, winreg.KEY_READ)
+                index = 0
+                entries = {}
+                
+                while True:
+                    try:
+                        name, value, _ = winreg.EnumValue(key, index)
+                        entries[name] = value
+                        index += 1
+                    except WindowsError:
+                        break
+                
+                winreg.CloseKey(key)
+                self.registry_baseline[path] = entries
+                print(f"    [+] Baseline: {path} ({len(entries)} entries)")
+                
+            except FileNotFoundError:
+                # Key doesn't exist - create empty baseline
+                self.registry_baseline[path] = {}
+            except Exception as e:
+                print(f"    [-] Failed to baseline {path}: {e}")
+    
+    def monitor_registry(self):
+        """
+        Main monitoring loop for registry changes
+        Continuously checks for new or modified entries
+        """
+        print("[+] Registry watchdog active - monitoring Run keys...")
+        
+        while self.running:
+            for hive, path in self.monitored_paths:
+                try:
+                    key = winreg.OpenKey(hive, path, 0, winreg.KEY_READ)
+                    index = 0
+                    
+                    while True:
+                        try:
+                            name, value, _ = winreg.EnumValue(key, index)
+                            
+                            # Check if this is a new or modified entry
+                            baseline = self.registry_baseline.get(path, {})
+                            if name not in baseline or baseline[name] != value:
+                                # New/modified entry - analyze it
+                                self._analyze_entry(hive, path, name, value)
+                                # Update baseline
+                                self.registry_baseline[path][name] = value
+                            
+                            index += 1
+                        except WindowsError:
+                            break
+                    
+                    winreg.CloseKey(key)
+                    
+                except FileNotFoundError:
+                    # Key doesn't exist yet - skip
+                    pass
+                except Exception as e:
+                    pass
+            
+            time.sleep(5)  # Check every 5 seconds
+    
+    def _analyze_entry(self, hive, path, name, value):
+        """
+        Analyze registry entry for suspicious characteristics
+        
+        Args:
+            hive: Registry hive (HKEY_CURRENT_USER, etc.)
+            path: Registry path
+            name: Entry name
+            value: Entry value (executable path)
+        """
+        is_suspicious = False
+        reasons = []
+        
+        # Check 1: Suspicious keywords in name
+        for keyword in self.suspicious_keywords:
+            if keyword.lower() in name.lower():
+                is_suspicious = True
+                reasons.append(f"Suspicious name keyword: {keyword}")
+                break
+        
+        # Check 2: Suspicious executable paths
+        suspicious_locations = ['temp', 'appdata', 'downloads', 'programdata']
+        if any(ext in value.lower() for ext in ['.exe', '.bat', '.ps1', '.vbs', '.js']):
+            for location in suspicious_locations:
+                if location in value.lower():
+                    is_suspicious = True
+                    reasons.append(f"Suspicious location: {location}")
+                    break
+        
+        # Check 3: Non-standard executable extensions
+        if any(ext in value.lower() for ext in ['.bat', '.ps1', '.vbs', '.js']):
+            is_suspicious = True
+            reasons.append("Script-based persistence (non-EXE)")
+        
+        if is_suspicious:
+            print(f"\n[THREAT DETECTED] Registry Persistence")
+            print(f"    Location: {path}")
+            print(f"    Name: {name}")
+            print(f"    Value: {value}")
+            print(f"    Reasons: {', '.join(reasons)}")
+            print(f"[REMOVING] Malicious registry entry...")
+            
+            if self._remove_entry(hive, path, name):
+                print(f"[SUCCESS] ✓ Removed: {name}\n")
+            else:
+                print(f"[FAILED] ✗ Could not remove: {name}\n")
+    
+    def _remove_entry(self, hive, path, name):
+        """
+        Remove malicious registry entry
+        
+        Args:
+            hive: Registry hive
+            path: Registry path
+            name: Entry name to delete
+        
+        Returns:
+            True if successful, False otherwise
+        """
+        try:
+            key = winreg.OpenKey(hive, path, 0, winreg.KEY_SET_VALUE)
+            winreg.DeleteValue(key, name)
+            winreg.CloseKey(key)
+            return True
+        except Exception as e:
+            print(f"    [ERROR] {e}")
+            return False
+
+
+class TaskAuditor:
+    """
+    Scheduled Task Persistence Monitor
+    Developer: Titya (Anti-Persistence Specialist)
+    
+    Defends against: ScheduledTaskPersistence class (Homey - Red Team)
+    
+    Monitors and removes malicious scheduled task persistence.
+    Enumerates tasks and identifies suspicious characteristics.
+    
+    MITRE D3FEND Techniques:
+    - D3-PSA: Process Spawn Analysis
+    - D3-HBPI: Host-Based Process Inspection
+    
+    How it works:
+    1. Enumerates all scheduled tasks using PowerShell
+    2. Analyzes task names, triggers, and actions
+    3. Identifies suspicious patterns
+    4. Automatically removes malicious tasks
+    
+    Detection Patterns:
+    - Suspicious names: WindowsUpdate, SecurityUpdate, MicrosoftDefender (fake services)
+    - Hidden tasks (Settings.Hidden = True)
+    - Unusual triggers: every minute, on idle, multiple triggers
+    - Script execution: PowerShell.exe, cmd.exe, wscript.exe
+    - Suspicious paths: temp, appdata, downloads
+    """
+    
+    def __init__(self):
+        """Initialize task auditor"""
+        self.running = True
+        self.suspicious_keywords = [
+            'WindowsUpdate', 'SecurityUpdate', 'MicrosoftDefender',
+            'WindowsSecurityUpdate', 'MicrosoftWindowsUpdate',
+            'chimera', 'malware', 'backdoor', 'SystemMaintenance'
+        ]
+        self.known_tasks = set()
+    
+    def audit_tasks(self):
+        """
+        Main monitoring loop for scheduled tasks
+        Continuously enumerates and analyzes tasks
+        """
+        print("[+] Task auditor active - monitoring scheduled tasks...")
+        
+        while self.running:
+            try:
+                # Enumerate all scheduled tasks
+                tasks = self._enumerate_tasks()
+                
+                # Analyze each task
+                for task_info in tasks:
+                    task_name = task_info.get('name', '')
+                    
+                    # Check if this is a new task
+                    if task_name not in self.known_tasks:
+                        if self._analyze_task(task_info):
+                            # Task is suspicious - remove it
+                            self._remove_task(task_name)
+                        else:
+                            # Task is legitimate - add to known list
+                            self.known_tasks.add(task_name)
+                
+            except Exception as e:
+                print(f"[ERROR] Task audit error: {e}")
+            
+            time.sleep(10)  # Check every 10 seconds
+    
+    def _enumerate_tasks(self):
+        """
+        Enumerate all scheduled tasks using PowerShell
+        
+        Returns:
+            List of task dictionaries with name, path, state, actions
+        """
+        try:
+            # PowerShell command to get task details
+            ps_command = '''
+Get-ScheduledTask | Where-Object {$_.State -eq "Ready" -or $_.State -eq "Running"} | ForEach-Object {
+    [PSCustomObject]@{
+        Name = $_.TaskName
+        Path = $_.TaskPath
+        State = $_.State
+        Actions = ($_.Actions | ForEach-Object { $_.Execute }) -join "; "
+    }
+} | ConvertTo-Json
+            '''
+            
+            result = subprocess.run(
+                ['powershell', '-Command', ps_command],
+                capture_output=True,
+                text=True,
+                timeout=30
+            )
+            
+            if result.returncode == 0 and result.stdout.strip():
+                import json
+                try:
+                    tasks_data = json.loads(result.stdout)
+                    # Handle single task (not a list)
+                    if isinstance(tasks_data, dict):
+                        tasks_data = [tasks_data]
+                    
+                    # Convert to simpler format
+                    tasks = []
+                    for task in tasks_data:
+                        tasks.append({
+                            'name': task.get('Name', ''),
+                            'path': task.get('Path', ''),
+                            'state': task.get('State', ''),
+                            'actions': task.get('Actions', '')
+                        })
+                    
+                    return tasks
+                except json.JSONDecodeError:
+                    return []
+            
+            return []
+            
+        except Exception as e:
+            print(f"[ERROR] Failed to enumerate tasks: {e}")
+            return []
+    
+    def _analyze_task(self, task_info):
+        """
+        Analyze task for suspicious characteristics
+        
+        Args:
+            task_info: Dictionary with task details
+        
+        Returns:
+            True if suspicious, False if legitimate
+        """
+        is_suspicious = False
+        reasons = []
+        
+        task_name = task_info.get('name', '')
+        task_actions = task_info.get('actions', '').lower()
+        
+        # Check 1: Suspicious keywords in name
+        for keyword in self.suspicious_keywords:
+            if keyword.lower() in task_name.lower():
+                is_suspicious = True
+                reasons.append(f"Suspicious name keyword: {keyword}")
+                break
+        
+        # Check 2: PowerShell execution
+        if 'powershell' in task_actions or 'pwsh' in task_actions:
+            is_suspicious = True
+            reasons.append("PowerShell execution detected")
+        
+        # Check 3: Script execution
+        if any(ext in task_actions for ext in ['.bat', '.ps1', '.vbs', '.js']):
+            is_suspicious = True
+            reasons.append("Script-based execution")
+        
+        # Check 4: Suspicious paths
+        suspicious_locations = ['temp', 'appdata', 'downloads', 'programdata']
+        for location in suspicious_locations:
+            if location in task_actions:
+                is_suspicious = True
+                reasons.append(f"Suspicious location: {location}")
+                break
+        
+        if is_suspicious:
+            print(f"\n[THREAT DETECTED] Scheduled Task Persistence")
+            print(f"    Name: {task_name}")
+            print(f"    Path: {task_info.get('path', 'N/A')}")
+            print(f"    Actions: {task_info.get('actions', 'N/A')}")
+            print(f"    Reasons: {', '.join(reasons)}")
+            print(f"[REMOVING] Malicious scheduled task...")
+        
+        return is_suspicious
+    
+    def _remove_task(self, task_name):
+        """
+        Remove malicious scheduled task
+        
+        Args:
+            task_name: Name of task to delete
+        
+        Returns:
+            True if successful, False otherwise
+        """
+        try:
+            result = subprocess.run(
+                ['schtasks', '/Delete', '/TN', task_name, '/F'],
+                capture_output=True,
+                timeout=10
+            )
+            
+            if result.returncode == 0:
+                print(f"[SUCCESS] ✓ Removed task: {task_name}\n")
+                return True
+            else:
+                print(f"[FAILED] ✗ Could not remove: {task_name}\n")
+                return False
+                
+        except Exception as e:
+            print(f"[ERROR] {e}")
+            return False
+
+
+# ==========================================
+# ANTI-SPREADING SPECIALIST MODULE - Vicheakta
+# ==========================================
+# Purpose: Prevent lateral movement and worm propagation
+# Defense Against: SMB spreading, USB worms
+# MITRE D3FEND: D3-NTF (Network Traffic Filtering), D3-ITF (Inbound Traffic Filtering)
+
+class SMBMonitor:
+    """
+    SMB Traffic Monitor and Blocker
+    Developer: Vicheakta (Anti-Spreading Specialist)
+    
+    Monitors and blocks suspicious SMB traffic to prevent lateral movement.
+    
+    MITRE D3FEND Techniques:
+    - D3-NTF: Network Traffic Filtering
+    - D3-ITF: Inbound Traffic Filtering
+    
+    How it works:
+    1. Monitors active SMB connections (port 445)
+    2. Detects connection spikes (>5 connections/second)
+    3. Blocks SMB port using Windows Firewall
+    4. Automatically unblocks after cooldown period
+    """
+    
+    def __init__(self):
+        """Initialize SMB monitor"""
+        self.running = True
+        self.connection_threshold = 5  # connections per second
+        self.smb_blocked = False
+    
+    def block_smb(self):
+        """Block SMB port 445 using Windows Firewall"""
+        if self.smb_blocked:
+            return
+        
+        try:
+            # Add firewall rule to block SMB
+            subprocess.run(
+                ['netsh', 'advfirewall', 'firewall', 'add', 'rule',
+                 'name=AegisBlockSMB', 'dir=in', 'action=block',
+                 'protocol=TCP', 'localport=445'],
+                capture_output=True,
+                timeout=10
+            )
+            self.smb_blocked = True
+            print("[BLOCKED] SMB port 445 - Lateral movement prevented")
+        except Exception as e:
+            print(f"[ERROR] Failed to block SMB: {e}")
+    
+    def unblock_smb(self):
+        """Unblock SMB port 445"""
+        if not self.smb_blocked:
+            return
+        
+        try:
+            # Remove firewall rule
+            subprocess.run(
+                ['netsh', 'advfirewall', 'firewall', 'delete', 'rule',
+                 'name=AegisBlockSMB'],
+                capture_output=True,
+                timeout=10
+            )
+            self.smb_blocked = False
+            print("[UNBLOCKED] SMB port 445 - Normal operations resumed")
+        except Exception as e:
+            print(f"[ERROR] Failed to unblock SMB: {e}")
+    
+    def monitor_loop(self):
+        """Main monitoring loop"""
+        print("[+] Starting SMB traffic monitoring...")
+        
+        while self.running:
+            try:
+                # Count active SMB connections
+                smb_connections = []
+                for conn in psutil.net_connections(kind='inet'):
+                    if conn.laddr.port == 445 or (conn.raddr and conn.raddr.port == 445):
+                        smb_connections.append(conn)
+                
+                # Check for suspicious activity
+                if len(smb_connections) > self.connection_threshold:
+                    print(f"[ALERT] High SMB activity: {len(smb_connections)} connections")
+                    self.block_smb()
+                    
+                    # Cooldown period
+                    time.sleep(60)
+                    self.unblock_smb()
+                
+            except Exception as e:
+                print(f"[ERROR] SMB monitoring error: {e}")
+            
+            time.sleep(1)
+
+
+class USBSentinel:
+    """
+    USB Drive Scanner and Monitor
+    Developer: Vicheakta (Anti-Spreading Specialist)
+    
+    Scans USB drives for malware when inserted.
+    Quarantines suspicious files automatically.
+    
+    MITRE D3FEND Techniques:
+    - D3-DA: Dynamic Analysis
+    - D3-QA: Quarantine by Access
+    
+    How it works:
+    1. Detects when USB drive is inserted
+    2. Scans drive for suspicious files:
+       - Executable files (.exe, .bat, .ps1, .lnk)
+       - Hidden files
+       - Autorun.inf
+    3. Quarantines detected threats
+    4. Logs all actions
+    """
+    
+    def __init__(self):
+        """Initialize USB sentinel"""
+        self.running = True
+        self.monitored_drives = set()
+        self.quarantine_dir = os.path.join(os.getcwd(), ".aegis_usb_quarantine")
+        
+        # Create quarantine directory
+        if not os.path.exists(self.quarantine_dir):
+            os.makedirs(self.quarantine_dir)
+    
+    def detect_usb_drives(self):
+        """Detect USB drives"""
+        drives = []
+        for letter in 'DEFGHIJKLMNOPQRSTUVWXYZ':
+            drive = f"{letter}:\\"
+            if os.path.exists(drive):
+                drives.append(drive)
+        return drives
+    
+    def is_file_suspicious(self, file_path):
+        """Check if file is suspicious"""
+        file_name = os.path.basename(file_path).lower()
+        
+        # Check for dangerous extensions
+        dangerous_exts = ['.exe', '.bat', '.ps1', '.lnk', '.vbs', '.js']
+        if any(file_name.endswith(ext) for ext in dangerous_exts):
+            return True, "Dangerous file extension"
+        
+        # Check for autorun.inf
+        if 'autorun.inf' in file_name:
+            return True, "Autorun file detected"
+        
+        # Check for hidden files
+        try:
+            if os.stat(file_path).st_file_attributes & 2:  # FILE_ATTRIBUTE_HIDDEN
+                return True, "Hidden file"
+        except:
+            pass
+        
+        return False, None
+    
+    def quarantine_file(self, file_path, reason):
+        """Quarantine suspicious file"""
+        try:
+            file_name = os.path.basename(file_path)
+            quarantine_path = os.path.join(self.quarantine_dir, file_name)
+            
+            shutil.move(file_path, quarantine_path)
+            
+            # Log
+            log_file = os.path.join(self.quarantine_dir, "usb_quarantine_log.txt")
+            with open(log_file, 'a') as f:
+                timestamp = time.strftime("%Y-%m-%d %H:%M:%S")
+                f.write(f"[{timestamp}] USB THREAT: {file_name}\n")
+                f.write(f"Reason: {reason}\n\n")
+            
+            print(f"[USB QUARANTINE] {file_name} - {reason}")
+            return True
+        except Exception as e:
+            print(f"[ERROR] Failed to quarantine: {e}")
+            return False
+    
+    def scan_drive(self, drive):
+        """Scan USB drive for threats"""
+        print(f"[*] Scanning USB drive: {drive}")
+        threats_found = 0
+        
+        try:
+            for root, dirs, files in os.walk(drive):
+                for file in files:
+                    file_path = os.path.join(root, file)
+                    
+                    is_suspicious, reason = self.is_file_suspicious(file_path)
+                    if is_suspicious:
+                        if self.quarantine_file(file_path, reason):
+                            threats_found += 1
+            
+            print(f"[+] USB scan complete: {threats_found} threats removed from {drive}")
+            
+        except Exception as e:
+            print(f"[ERROR] USB scan error: {e}")
+        
+        return threats_found
+    
+    def monitor_loop(self):
+        """Main monitoring loop"""
+        print("[+] Starting USB drive monitoring...")
+        
+        while self.running:
+            try:
+                # Detect current drives
+                current_drives = set(self.detect_usb_drives())
+                
+                # Check for new drives
+                new_drives = current_drives - self.monitored_drives
+                for drive in new_drives:
+                    print(f"[NEW USB] Drive detected: {drive}")
+                    self.scan_drive(drive)
+                
+                # Update monitored drives
+                self.monitored_drives = current_drives
+                
+            except Exception as e:
+                print(f"[ERROR] USB monitoring error: {e}")
+            
+            time.sleep(3)
+
+
+# ==========================================
+# MAIN DEFENSE CLASS (INTEGRATED)
+# ==========================================
 class EnhancedAegisDefense:
     """
     Enhanced Aegis Defense System
@@ -451,40 +1461,143 @@ class EnhancedAegisDefense:
 
     def start_protection(self):
         """
-        Start All Defense Mechanisms
+        [INTEGRATED DEFENSE SYSTEM - All Blue Team Modules]
         
-        This method initializes and starts all three core protection methods
-        in separate daemon threads for concurrent monitoring.
+        Start All Defense Mechanisms with Full Integration
         
-        Threads:
-        1. Heuristic Encryption Detection (every 500ms)
-        2. System File Integrity Monitor (every 5 seconds)
-        3. Network Egress Filtering (every 3 seconds)
-        4. File System Observer (event-driven)
+        This method initializes and starts all defense modules in separate daemon
+        threads for comprehensive concurrent protection.
         
-        All threads run concurrently to provide comprehensive real-time protection.
+        CORE DEFENSE METHODS:
+        1. Heuristic Encryption Detection (behavioral ransomware detection)
+        2. System File Integrity Monitor (hash-based protection)
+        3. Network Egress Filtering (C2 blocking)
+        4. File System Observer (event-driven monitoring)
+        
+        INTEGRATED MODULES:
+        5. Anti-Delivery System (Sakura) - Download folder monitoring, HTML smuggling detection
+        6. Anti-Persistence Monitor (Titya) - Registry & task monitoring
+        7. SMB Monitor (Vicheakta) - SMB lateral movement blocking
+        8. USB Sentinel (Vicheakta) - USB drive malware scanning
+        
+        All threads run concurrently to provide multi-layer defense.
         """
-        print("=== ENHANCED AEGIS DEFENSE SYSTEM ACTIVATED ===")
-        print("Core Protection Methods:")
-        print("1. Heuristic Encryption Detection - ACTIVE")
-        print("2. System File Integrity Monitor - ACTIVE") 
-        print("3. Network Egress Filtering - ACTIVE")
-        print("Monitoring system for malicious activities...\n")
+        print("╔═══════════════════════════════════════════════════════════════╗")
+        print("║         AEGIS DEFENSE - FULLY INTEGRATED SYSTEM               ║")
+        print("╚═══════════════════════════════════════════════════════════════╝")
+        print("\n[CORE DEFENSE METHODS]")
+        print("  1. ✓ Heuristic Encryption Detection - ACTIVE")
+        print("  2. ✓ System File Integrity Monitor - ACTIVE") 
+        print("  3. ✓ Network Egress Filtering - ACTIVE")
+        print("  4. ✓ File System Observer - ACTIVE")
         
-        # Create threads for each protection method
-        # daemon=True ensures threads exit when main program exits
-        threads = [
-            threading.Thread(target=self.heuristic_encryption_detection),
-            threading.Thread(target=self.system_file_integrity_monitor),
-            threading.Thread(target=self.network_egress_filtering)
+        print("\n[INTEGRATED BLUE TEAM MODULES]")
+        print("  5. ✓ Anti-Delivery System (Sakura) - ACTIVE")
+        print("  6. ✓ Registry Watchdog (Titya) - ACTIVE")
+        print("  7. ✓ Task Auditor (Titya) - ACTIVE")
+        print("  8. ✓ SMB Traffic Monitor (Vicheakta) - ACTIVE")
+        print("  9. ✓ USB Sentinel (Vicheakta) - ACTIVE")
+        
+        print("\n[*] Initializing comprehensive protection...\n")
+        
+        # ===========================================
+        # CORE DEFENSE THREADS
+        # ===========================================
+        core_threads = [
+            threading.Thread(target=self.heuristic_encryption_detection, name="HeuristicDetection"),
+            threading.Thread(target=self.system_file_integrity_monitor, name="IntegrityMonitor"),
+            threading.Thread(target=self.network_egress_filtering, name="EgressFilter")
         ]
         
-        # Start all protection threads
-        for thread in threads:
+        # Start core defense threads
+        for thread in core_threads:
             thread.daemon = True
             thread.start()
+            print(f"[+] Started: {thread.name}")
         
-        # Setup file system monitoring using watchdog
+        # ===========================================
+        # INTEGRATED MODULE 1: ANTI-DELIVERY (Sakura)
+        # ===========================================
+        try:
+            downloads_path = os.path.expanduser("~/Downloads")
+            if os.path.exists(downloads_path):
+                anti_delivery = AntiDeliverySystem(downloads_path)
+                delivery_thread = threading.Thread(
+                    target=anti_delivery.monitor_downloads_folder,
+                    name="AntiDelivery-Sakura",
+                    daemon=True
+                )
+                delivery_thread.start()
+                print("[+] Started: Anti-Delivery System (Sakura)")
+            else:
+                print("[-] Downloads folder not found - Anti-Delivery disabled")
+        except Exception as e:
+            print(f"[-] Failed to start Anti-Delivery: {e}")
+        
+        # ===========================================
+        # INTEGRATED MODULE 2: ANTI-PERSISTENCE (Titya)
+        # NOW WITH 2 SEPARATE CLASSES TO MATCH RED TEAM
+        # ===========================================
+        
+        # 2a. Registry Watchdog (defends against RegistryPersistence)
+        try:
+            registry_watchdog = RegistryWatchdog()
+            registry_thread = threading.Thread(
+                target=registry_watchdog.monitor_registry,
+                name="RegistryWatchdog-Titya",
+                daemon=True
+            )
+            registry_thread.start()
+            print("[+] Started: Registry Watchdog (Titya)")
+        except Exception as e:
+            print(f"[-] Failed to start Registry Watchdog: {e}")
+        
+        # 2b. Task Auditor (defends against ScheduledTaskPersistence)
+        try:
+            task_auditor = TaskAuditor()
+            task_thread = threading.Thread(
+                target=task_auditor.audit_tasks,
+                name="TaskAuditor-Titya",
+                daemon=True
+            )
+            task_thread.start()
+            print("[+] Started: Task Auditor (Titya)")
+        except Exception as e:
+            print(f"[-] Failed to start Task Auditor: {e}")
+        
+        # ===========================================
+        # INTEGRATED MODULE 3: SMB MONITOR (Vicheakta)
+        # ===========================================
+        try:
+            smb_monitor = SMBMonitor()
+            smb_thread = threading.Thread(
+                target=smb_monitor.monitor_loop,
+                name="SMBMonitor-Vicheakta",
+                daemon=True
+            )
+            smb_thread.start()
+            print("[+] Started: SMB Traffic Monitor (Vicheakta)")
+        except Exception as e:
+            print(f"[-] Failed to start SMB Monitor: {e}")
+        
+        # ===========================================
+        # INTEGRATED MODULE 4: USB SENTINEL (Vicheakta)
+        # ===========================================
+        try:
+            usb_sentinel = USBSentinel()
+            usb_thread = threading.Thread(
+                target=usb_sentinel.monitor_loop,
+                name="USBSentinel-Vicheakta",
+                daemon=True
+            )
+            usb_thread.start()
+            print("[+] Started: USB Sentinel (Vicheakta)")
+        except Exception as e:
+            print(f"[-] Failed to start USB Sentinel: {e}")
+        
+        # ===========================================
+        # FILE SYSTEM OBSERVER (watchdog)
+        # ===========================================
         event_handler = self.EncryptionEventHandler(self)
         observer = Observer()
         
@@ -499,9 +1612,15 @@ class EnhancedAegisDefense:
         for folder in user_folders:
             if os.path.exists(folder):
                 observer.schedule(event_handler, folder, recursive=True)
+                print(f"[+] Monitoring: {folder}")
         
         # Start the file system observer
         observer.start()
+        
+        print("\n╔═══════════════════════════════════════════════════════════════╗")
+        print("║   AEGIS DEFENSE FULLY OPERATIONAL - ALL MODULES ACTIVE       ║")
+        print("║   Monitoring for: Ransomware | Worms | Persistence | C2      ║")
+        print("╚═══════════════════════════════════════════════════════════════╝\n")
         
         try:
             # Keep main thread alive while monitoring
@@ -513,6 +1632,7 @@ class EnhancedAegisDefense:
             self.running = False
             observer.stop()
             print("\n[!] Defense system shutting down...")
+            print("[!] All protection modules terminated")
         
         # Wait for observer to finish
         observer.join()

