@@ -607,8 +607,8 @@ class ScheduledTaskPersistence:
 
 #### 5.2.3 Lateral Movement Module (Kimkheng)
 
-**Files:** `usb_replication.py`, `redteam_smb_worm.py`  
-**Classes:** `USBReplicator`, `RedTeamSMBWorm`  
+**Files:** `usb_replication.py`, `smb_worm_2.py`  
+**Classes:** `USBReplicator`, `SMBWorm`  
 **Lines:** 786
 
 ##### USB Worm Propagation

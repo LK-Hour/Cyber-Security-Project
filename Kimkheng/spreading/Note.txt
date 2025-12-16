@@ -1,0 +1,8 @@
+smb_worm.py: have only two method
+
+(1) Credential Brute Force: Attacks ADMIN$/IPC$/C$ with common credentials. (2) Share Copy: Finds writable shares and copies malware.
+============================================================================================================================================
+
+smb_worm.py: is a complete method including 4 type of smb spreading
+
+smb_worm.py All 4 SMB spreading types: (1) Vulnerability Checking: Detects SMBv1, signing disabled, MS17-010 status. (2) Credential Brute Force: Attacks ADMIN$/IPC$/C$ with common credentials. (3) Share Copy: Finds writable shares and copies malware. (4) Credential Theft: Extracts and reuses saved Windows credentials for further spreading. (5) Auto-Misconfiguration: Creates security weaknesses (Guest enable, firewall open, share creation) when initial attacks fail, then re-exploits.
