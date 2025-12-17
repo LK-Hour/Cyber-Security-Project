@@ -46,7 +46,12 @@ class AntiPersistence:
         # Whitelist of known legitimate task names
         self.task_whitelist = [
             "GoogleUpdateTask", "MicrosoftEdgeUpdate", "OneDrive",
-            "Adobe", "Dropbox", "Slack", "Discord"
+            "Adobe", "Dropbox", "Slack", "Discord",
+            # Windows Defender legitimate tasks
+            "Windows Defender Scheduled Scan",
+            "Windows Defender Cache Maintenance", 
+            "Windows Defender Cleanup",
+            "Windows Defender Verification"
         ]
         
         # Get baseline of current registry entries
@@ -233,19 +238,22 @@ class AntiPersistence:
                 is_suspicious = False
                 reason = ""
                 
-                # Check suspicious keywords
+                # Check suspicious keywords (exclude if it's just "programdata" with MpCmdRun.exe)
                 for keyword in self.suspicious_keywords:
                     if keyword in full_info:
+                        # Skip if this is a Windows Defender system task
+                        if "mpcmdrun.exe" in execute.lower() and "windows defender" in task_path.lower():
+                            continue
                         is_suspicious = True
                         reason = f"Matches keyword: {keyword}"
                         break
                 
-                # Check for executables in suspicious locations
+                # Check for executables in suspicious locations (but NOT Windows Defender system paths)
                 suspicious_paths = ["temp", "downloads", "appdata\\local\\temp", "users\\public"]
                 for path in suspicious_paths:
                     if path in execute.lower():
                         is_suspicious = True
-                        reason = f"Executable in suspicious path: {path}"
+                        reason = f"Suspicious location: {path}"
                         break
                 
                 if is_suspicious:

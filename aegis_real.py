@@ -624,6 +624,13 @@ class TaskAuditor:
             'WindowsSecurityUpdate', 'MicrosoftWindowsUpdate',
             'chimera', 'malware', 'backdoor', 'SystemMaintenance'
         ]
+        # Whitelist of legitimate Windows Defender tasks
+        self.legitimate_tasks = [
+            'Windows Defender Scheduled Scan',
+            'Windows Defender Cache Maintenance',
+            'Windows Defender Cleanup',
+            'Windows Defender Verification'
+        ]
         self.known_tasks = set()
     
     def audit_tasks(self):
@@ -726,10 +733,18 @@ Get-ScheduledTask | Where-Object {$_.State -eq "Ready" -or $_.State -eq "Running
         
         task_name = task_info.get('name', '')
         task_actions = task_info.get('actions', '').lower()
+        task_path = task_info.get('path', '').lower()
         
-        # Check 1: Suspicious keywords in name
+        # WHITELIST CHECK: Skip legitimate Windows Defender tasks
+        if task_name in self.legitimate_tasks:
+            return False
+        
+        # Check 1: Suspicious keywords in name (but skip if it's Windows Defender system task)
         for keyword in self.suspicious_keywords:
             if keyword.lower() in task_name.lower():
+                # Skip if this is a Windows Defender system task with MpCmdRun.exe
+                if 'mpcmdrun.exe' in task_actions and 'windows defender' in task_path:
+                    continue
                 is_suspicious = True
                 reasons.append(f"Suspicious name keyword: {keyword}")
                 break
@@ -744,10 +759,13 @@ Get-ScheduledTask | Where-Object {$_.State -eq "Ready" -or $_.State -eq "Running
             is_suspicious = True
             reasons.append("Script-based execution")
         
-        # Check 4: Suspicious paths
+        # Check 4: Suspicious paths (excluding Windows Defender system paths)
         suspicious_locations = ['temp', 'appdata', 'downloads', 'programdata']
         for location in suspicious_locations:
             if location in task_actions:
+                # Skip if this is Windows Defender in ProgramData
+                if location == 'programdata' and 'mpcmdrun.exe' in task_actions and 'windows defender' in task_path:
+                    continue
                 is_suspicious = True
                 reasons.append(f"Suspicious location: {location}")
                 break

